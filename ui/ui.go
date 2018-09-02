@@ -7,6 +7,7 @@ import (
 	ui "github.com/gizak/termui"
 )
 
+// Run a spark line ui
 func Run(targets []string, dataSource func() ([]SpItem), onExit func()) {
 	if err := ui.Init(); err != nil {
 		panic(err)
@@ -42,11 +43,17 @@ func Run(targets []string, dataSource func() ([]SpItem), onExit func()) {
 		}
 		ui.Render(group)
 	}
-	ui.Handle("/sys/kbd/q", func(ui.Event) {
+
+	stop := func() {
+		onExit()
 		ui.StopLoop()
+	}
+
+	ui.Handle("/sys/kbd/q", func(ui.Event) {
+		stop()
 	})
 	ui.Handle("/sys/kbd/C-c", func(ui.Event) {
-		ui.StopLoop()
+		stop()
 	})
 	ui.Handle("/timer/1s", func(e ui.Event) {
 		draw(e)

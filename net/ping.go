@@ -12,6 +12,7 @@ import (
 	"golang.org/x/net/ipv6"
 )
 
+// Ping provide ability to send and receive ICMP packets
 type Ping struct {
 	conn   *connSource
 	connV6 *connSource
@@ -21,6 +22,7 @@ type Ping struct {
 	sessions sync.Map
 
 	stopping chan bool
+	stop     sync.WaitGroup
 }
 
 type connSource struct {
@@ -31,7 +33,7 @@ type connSource struct {
 type packet struct {
 	source *connSource
 
-	recvAt time.Time
+	echoAt time.Time
 
 	bytes []byte
 	n     int
@@ -42,6 +44,7 @@ type session struct {
 	ch chan time.Time
 }
 
+// NewPing new a ping
 func NewPing() (*Ping) {
 	return &Ping{
 		bus:      make(chan *packet, 256),
@@ -56,6 +59,7 @@ func newSession() *session {
 	}
 }
 
+// Start listen
 func (p *Ping) Start() (err error) {
 	c, err := icmp.ListenPacket("udp4", "")
 	if err != nil {
@@ -68,26 +72,30 @@ func (p *Ping) Start() (err error) {
 	}
 	p.connV6 = &connSource{c: c, proto: 58}
 
+	p.stop.Add(1)
 	go p.consumeBus()
-	go p.recv()
-
+	func() {
+		p.stop.Add(2)
+		go p.readFrom(p.conn)
+		go p.readFrom(p.connV6)
+	}()
 	return nil
 }
 
+// Stop listen and receive
 func (p *Ping) Stop() {
 	close(p.stopping)
+	p.stop.Wait()
+
+	p.conn.close()
+	p.connV6.close()
 }
 
-func (p *Ping) recv() {
-	go p.recvFrom(p.conn)
-
-	go p.recvFrom(p.connV6)
-}
-
-func (p *Ping) recvFrom(c *connSource) {
+func (p *Ping) readFrom(c *connSource) {
 	for {
 		select {
 		case <-p.stopping:
+			p.stop.Done()
 			return
 		default:
 			bytes := make([]byte, 512)
@@ -106,7 +114,7 @@ func (p *Ping) recvFrom(c *connSource) {
 			p.bus <- &packet{
 				bytes:  bytes,
 				n:      n,
-				recvAt: time.Now(),
+				echoAt: time.Now(),
 				source: c}
 		}
 	}
@@ -116,6 +124,7 @@ func (p *Ping) consumeBus() {
 	for {
 		select {
 		case <-p.stopping:
+			p.stop.Done()
 			return
 		case msg := <-p.bus:
 			p.parseMsg(msg)
@@ -136,7 +145,7 @@ func (p *Ping) parseMsg(msg *packet) {
 
 	body := m.Body.(*icmp.Echo)
 	if s, ok := p.sessions.Load(body.ID); ok {
-		s.(*session).ch <- msg.recvAt
+		s.(*session).ch <- msg.echoAt
 	}
 }
 
@@ -151,7 +160,7 @@ func (p *Ping) send(ipAddr *net.IPAddr, c *connSource) (*time.Time, *session, er
 	var sid int
 	s := newSession()
 	for {
-		sid = rand.Intn(1<<16)
+		sid = rand.Intn(1 << 16)
 		if _, loaded := p.sessions.LoadOrStore(sid, s); !loaded {
 			s.id = sid
 			break
@@ -179,6 +188,7 @@ func (p *Ping) send(ipAddr *net.IPAddr, c *connSource) (*time.Time, *session, er
 	}
 }
 
+// PingOnce to target with address as `addr`
 func (p *Ping) PingOnce(addr string) (time.Duration, error) {
 	ipAddr, err := net.ResolveIPAddr("ip", addr)
 	if err != nil {
@@ -211,4 +221,8 @@ func (p *Ping) doPing(ipAddr *net.IPAddr) (time.Duration, error) {
 	case pongAt := <-session.ch:
 		return pongAt.Sub(*since), nil
 	}
+}
+
+func (c *connSource) close() {
+	c.c.Close()
 }
