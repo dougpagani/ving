@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"time"
 
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/types"
@@ -102,6 +103,7 @@ func prepareConsole(targets []string) *console {
 
 	spHeight := 3
 	sparkLines := make([]termui.Sparkline, 0, len(targets))
+	rand.Seed(time.Now().Unix())
 	color := rand.Intn(termui.NumberofColors - 2)
 	for i, target := range targets {
 		sp := termui.Sparkline{}
