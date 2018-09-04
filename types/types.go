@@ -1,21 +1,22 @@
 package types
 
-// WithId describe id name and order
-type WithId struct {
-	Id    string
-	Order int
+// ItemHeader describe id name and order
+type ItemHeader struct {
+	Id     int
+	Target string
+	Iter   int
 }
 
 // SpItem for spark line
 type SpItem struct {
-	WithId
+	ItemHeader
 	Value   int
 	Display interface{}
 }
 
 // ErrItem for errors
 type ErrItem struct {
-	WithId
+	ItemHeader
 	Err string
 }
 

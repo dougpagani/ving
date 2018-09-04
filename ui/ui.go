@@ -10,21 +10,23 @@ import (
 	"github.com/yittg/ving/types"
 )
 
-type console struct {
+// Console display
+type Console struct {
 	width  int
 	height int
 
-	errStatistics map[string]errStatistic
+	errStatistics map[int]errStatistic
 
 	spGroup  *termui.Sparklines
 	errGroup *termui.List
 }
 
 type errStatistic struct {
-	id    string
-	order int
-	count int
-	last  string
+	id       int
+	addr     string
+	count    int
+	last     string
+	lastIter uint64
 }
 
 type errStatisticSlice []errStatistic
@@ -34,71 +36,15 @@ func (s errStatisticSlice) Len() int {
 }
 
 func (s errStatisticSlice) Less(i, j int) bool {
-	return s[i].order < s[j].order
+	return s[i].id < s[j].id
 }
 
 func (s errStatisticSlice) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-func (c *console) spUpdate(t uint64, sps []types.SpItem) {
-	for _, d := range sps {
-		line := &(c.spGroup.Lines[d.Order])
-		line.Data = append(line.Data[1:], d.Value)
-		format := fmt.Sprintf("%%s%%%dv", c.width-2-len(d.Id))
-		line.Title = fmt.Sprintf(format, d.Id, d.Display)
-	}
-	c.spGroup.BorderLabel = fmt.Sprintf("Ping(%d)", t)
-}
-
-func (c *console) errUpdateHistory(errs []types.ErrItem) map[string]bool {
-	newErr := make(map[string]bool, len(errs))
-	for _, e := range errs {
-		if old, ok := c.errStatistics[e.Id]; ok {
-			c.errStatistics[e.Id] = errStatistic{
-				id:    e.Id,
-				order: e.Order,
-				count: old.count + 1,
-				last:  e.Err,
-			}
-		} else {
-			c.errStatistics[e.Id] = errStatistic{
-				id:    e.Id,
-				order: e.Order,
-				count: 1,
-				last:  e.Err,
-			}
-		}
-		newErr[e.Id] = true
-	}
-	return newErr
-}
-
-func (c *console) errUpdate(_ uint64, errs []types.ErrItem) {
-	newErr := c.errUpdateHistory(errs)
-
-	errStatistics := make(errStatisticSlice, 0, len(c.errStatistics))
-	for _, e := range c.errStatistics {
-		errStatistics = append(errStatistics, e)
-	}
-	sort.Sort(errStatistics)
-
-	if c.errGroup.Height < len(errStatistics) {
-		c.errGroup.Height = len(errStatistics)
-	}
-	display := make([]string, 0, len(errStatistics))
-	for _, e := range errStatistics {
-		title := fmt.Sprintf("* %s:%s", e.id, e.last)
-		format := fmt.Sprintf("%%s%%%dv", c.width-1-len(title))
-		if _, ok := newErr[e.id]; ok {
-			format = fmt.Sprintf("[%s](fg-red)", format)
-		}
-		display = append(display, fmt.Sprintf(format, title, e.count))
-	}
-	c.errGroup.Items = display
-}
-
-func prepareConsole(targets []string) *console {
+// NewConsole init console
+func NewConsole(targets []string) *Console {
 	consoleWidth := 80
 
 	spHeight := 3
@@ -127,45 +73,109 @@ func prepareConsole(targets []string) *console {
 	errGroup.Height = 1
 	errGroup.Width = consoleWidth
 
-	return &console{
+	return &Console{
 		width:         consoleWidth,
 		height:        group.Height + errGroup.Height,
 		spGroup:       group,
 		errGroup:      errGroup,
-		errStatistics: make(map[string]errStatistic, len(targets)),
+		errStatistics: make(map[int]errStatistic, len(targets)),
 	}
 }
 
+func (c *Console) handleSpItem(item types.SpItem) {
+	line := &(c.spGroup.Lines[item.Id])
+	line.Data = append(line.Data[1:], item.Value)
+	res := fmt.Sprintf("%v #%d", item.Display, item.Iter)
+	format := fmt.Sprintf("%%s%%%dv", c.width-2-len(item.Target))
+	line.Title = fmt.Sprintf(format, item.Target, res)
+}
+
+func (c *Console) handleErr(iter uint64, e types.ErrItem) {
+	count := 1
+	if old, ok := c.errStatistics[e.Id]; ok {
+		count = old.count + 1
+	}
+	c.errStatistics[e.Id] = errStatistic{
+		id:       e.Id,
+		addr:     e.Target,
+		count:    count,
+		last:     e.Err,
+		lastIter: iter,
+	}
+}
+
+func (c *Console) displayErr(iter uint64) {
+	errStatistics := make(errStatisticSlice, 0, len(c.errStatistics))
+	for _, e := range c.errStatistics {
+		errStatistics = append(errStatistics, e)
+	}
+	sort.Sort(errStatistics)
+
+	if c.errGroup.Height < len(errStatistics) {
+		c.errGroup.Height = len(errStatistics)
+	}
+	display := make([]string, 0, len(errStatistics))
+	for _, e := range errStatistics {
+		title := fmt.Sprintf("* %s:%s", e.addr, e.last)
+		format := fmt.Sprintf("%%s%%%dv", c.width-1-len(title))
+		if e.lastIter+10 >= iter { // remain 10 iter, e.g. 10 * 10ms
+			format = fmt.Sprintf("[%s](fg-red)", format)
+		}
+		display = append(display, fmt.Sprintf(format, title, e.count))
+	}
+	c.errGroup.Items = display
+}
+
+func (c *Console) handleRes(iter uint64, res interface{}) {
+	switch res.(type) {
+	case types.SpItem:
+		c.handleSpItem(res.(types.SpItem))
+	case types.ErrItem:
+		errItem := res.(types.ErrItem)
+		c.handleErr(iter, errItem)
+		c.handleSpItem(types.SpItem{
+			ItemHeader: errItem.ItemHeader,
+			Value:      0,
+			Display:    "E",
+		})
+	default:
+		// ignore
+	}
+	c.displayErr(iter)
+	termui.Render(c.spGroup, c.errGroup)
+}
+
 // Run a spark line ui
-func Run(targets []string, dataSource func() (types.DataSet), onExit func()) {
+func (c *Console) Run(resChan chan interface{}, onExit func()) {
 	if err := termui.Init(); err != nil {
 		panic(err)
 	}
 	defer termui.Close()
 
-	console := prepareConsole(targets)
+	termui.DefaultEvtStream.Merge("timer", termui.NewTimerCh(time.Millisecond*10))
 
-	draw := func(e termui.Event) {
+	termui.Handle("/timer/10ms", func(e termui.Event) {
 		t := e.Data.(termui.EvtTimer)
-		source := dataSource()
-		console.spUpdate(t.Count, source.SpItems)
-		console.errUpdate(t.Count, source.ErrItems)
-		termui.Render(console.spGroup, console.errGroup)
-	}
+		for {
+			select {
+			case res := <-resChan:
+				c.handleRes(t.Count, res)
+			default:
+				return
+			}
+		}
+	})
 
 	stop := func() {
 		onExit()
 		termui.StopLoop()
 	}
-
 	termui.Handle("/sys/kbd/q", func(termui.Event) {
 		stop()
 	})
 	termui.Handle("/sys/kbd/C-c", func(termui.Event) {
 		stop()
 	})
-	termui.Handle("/timer/1s", func(e termui.Event) {
-		draw(e)
-	})
+
 	termui.Loop()
 }
