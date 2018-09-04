@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"sync"
 
@@ -54,12 +55,21 @@ func oneLoop(ping *net.Ping, targets []string) types.DataSet {
 	}
 }
 
+func printUsage() {
+	fmt.Printf(`%s target [target...]
+    for example: %s 127.0.0.1 192.168.0.1
+`, os.Args[0], os.Args[0])
+}
+
 func main() {
+	targets := os.Args[1:]
+	if len(targets) == 0 {
+		printUsage()
+		os.Exit(1)
+	}
+
 	ping := net.NewPing()
 	ping.Start()
-
-	targets := os.Args[1:]
-
 	ui.Run(
 		targets,
 		func() types.DataSet {
