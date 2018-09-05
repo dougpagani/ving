@@ -1,4 +1,7 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/yittg/ving)](https://goreportcard.com/report/github.com/yittg/ving)
+
 # ving
+
 `ving` is a visualization ping utility written in Golang(1.11+).
 Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 

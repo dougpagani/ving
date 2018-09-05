@@ -8,9 +8,11 @@ import (
 
 func Test(t *testing.T) {
 	p := NewPing()
-	p.Start()
+	if err := p.Start(); err != nil {
+		t.Error("start ping error", err)
+	}
 
-	targets := []string{"127.0.0.1", "www.baidu.com"}
+	targets := []string{"127.0.0.1", "example.com"}
 
 	wg := sync.WaitGroup{}
 	for _, target := range targets {

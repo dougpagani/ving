@@ -45,7 +45,7 @@ type session struct {
 }
 
 // NewPing new a ping
-func NewPing() (*Ping) {
+func NewPing() *Ping {
 	return &Ping{
 		bus:      make(chan *packet, 256),
 		stopping: make(chan bool),
@@ -99,7 +99,10 @@ func (p *Ping) readFrom(c *connSource) {
 			return
 		default:
 			bytes := make([]byte, 512)
-			c.c.SetReadDeadline(time.Now().Add(time.Millisecond * 100))
+			if err := c.c.SetReadDeadline(time.Now().Add(time.Millisecond * 100)); err != nil {
+				close(p.stopping)
+				return
+			}
 			n, _, err := c.c.ReadFrom(bytes)
 			if err != nil {
 				if netOpErr, ok := err.(*net.OpError); ok {
@@ -179,13 +182,11 @@ func (p *Ping) send(ipAddr *net.IPAddr, c *connSource) (*time.Time, *session, er
 		return nil, nil, err
 	}
 
-	for {
-		t := time.Now()
-		if _, err := c.c.WriteTo(bytes, dst); err != nil {
-			return nil, nil, err
-		}
-		return &t, s, nil
+	t := time.Now()
+	if _, err := c.c.WriteTo(bytes, dst); err != nil {
+		return nil, nil, err
 	}
+	return &t, s, nil
 }
 
 // PingOnce to target with address as `addr`

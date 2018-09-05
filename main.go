@@ -79,7 +79,10 @@ func main() {
 		os.Exit(1)
 	}
 	ping := net.NewPing()
-	ping.Start()
+	if err := ping.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "start ping error, %v", err)
+		os.Exit(2)
+	}
 
 	resChan := make(chan interface{}, len(targets))
 	stopChan := make(chan bool, 2)
