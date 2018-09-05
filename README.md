@@ -1,11 +1,18 @@
 # ving
-`ving` is a visual ping utility written in Golang.
-Special thanks [termui](https://github.com/gizak/termui) for providing terminal library.
+`ving` is a visualization ping utility written in Golang(1.11+).
+Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 
 # Features
 
 * ping multiple targets independently at once;
-* ping interval option.
+* ping interval option;
+* responsive terminal display (based on termui).
+
+# Install
+
+```
+$ go get -u github.com/yittg/ving
+```
 
 # Usage
 
