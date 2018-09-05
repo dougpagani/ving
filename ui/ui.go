@@ -67,7 +67,7 @@ func NewConsole(targets []string) *Console {
 }
 
 func (c *Console) handleSpItem(item types.SpItem) {
-	line := &(c.spGroup.Lines[item.Id])
+	line := &(c.spGroup.Lines[item.ID])
 	size := c.dataLen()
 	if len(line.Data) == 0 {
 		line.Data = make([]int, size)
@@ -80,7 +80,7 @@ func (c *Console) handleSpItem(item types.SpItem) {
 
 func (c *Console) resizeSpGroup() {
 	targetSize := c.dataLen()
-	for i := 0; i < len(c.spGroup.Lines); i += 1 {
+	for i := 0; i < len(c.spGroup.Lines); i++ {
 		line := &(c.spGroup.Lines[i])
 		crtSize := len(line.Data)
 		if crtSize == 0 || crtSize == targetSize {
@@ -95,14 +95,14 @@ func (c *Console) resizeSpGroup() {
 }
 
 func (c *Console) handleErr(iter uint64, e types.ErrItem) {
-	if old, ok := c.errStatistics[e.Id]; ok {
-		old.count += 1
+	if old, ok := c.errStatistics[e.ID]; ok {
+		old.count++
 		old.lastIter = iter
 		old.last = e.Err
 		return
 	}
-	c.errStatistics[e.Id] = &errStatistic{
-		id:       e.Id,
+	c.errStatistics[e.ID] = &errStatistic{
+		id:       e.ID,
 		title:    e.Target,
 		count:    1,
 		last:     e.Err,
@@ -115,7 +115,7 @@ func (c *Console) displayErr(iter uint64) {
 		c.errGroup.Height = len(c.errStatistics)
 	}
 	display := make([]string, 0, len(c.errStatistics))
-	for i := 0; i < c.nItem; i += 1 {
+	for i := 0; i < c.nItem; i++ {
 		e, ok := c.errStatistics[i]
 		if !ok {
 			continue

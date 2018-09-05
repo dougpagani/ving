@@ -26,7 +26,7 @@ func pingTarget(
 			return
 		case <-t.C:
 			duration, e := ping.PingOnce(header.Target)
-			header.Iter += 1
+			header.Iter++
 			if e != nil {
 				resChan <- types.ErrItem{
 					ItemHeader: header,
@@ -89,7 +89,7 @@ func main() {
 
 	for idx, target := range targets {
 		header := types.ItemHeader{
-			Id:     idx,
+			ID:     idx,
 			Target: target,
 		}
 		go pingTarget(ping, opt.interval, header, resChan, stopChan)

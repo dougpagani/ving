@@ -2,7 +2,7 @@ package types
 
 // ItemHeader describe id name and order
 type ItemHeader struct {
-	Id     int
+	ID     int
 	Target string
 	Iter   int
 }
