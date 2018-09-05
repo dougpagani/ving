@@ -49,8 +49,7 @@ func NewConsole(targets []string) *Console {
 
 	group := termui.NewSparklines(sparkLines...)
 	group.Height = len(sparkLines)*(spHeight+1) + 2
-	group.BorderLabel = "Ping"
-	group.BorderLabelFg = termui.ColorCyan
+	group.Border = false
 
 	errGroup := termui.NewList()
 	errGroup.Border = false
@@ -154,7 +153,7 @@ func (c *Console) width() int {
 }
 
 func (c *Console) dataLen() int {
-	return c.width() - 2
+	return c.width()
 }
 
 func (c *Console) errTextLen() int {
