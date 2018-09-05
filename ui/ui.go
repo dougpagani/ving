@@ -3,44 +3,34 @@ package ui
 import (
 	"fmt"
 	"math/rand"
-	"sort"
 	"time"
 
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/types"
 )
 
+const defaultLoopPeriodic = time.Millisecond * 10
+
 // Console display
 type Console struct {
 	width  int
 	height int
 
-	errStatistics map[int]errStatistic
+	nItem         int
+	errStatistics map[int]*errStatistic
 
 	spGroup  *termui.Sparklines
 	errGroup *termui.List
+
+	loopPeriodic time.Duration
 }
 
 type errStatistic struct {
 	id       int
-	addr     string
+	title    string
 	count    int
 	last     string
 	lastIter uint64
-}
-
-type errStatisticSlice []errStatistic
-
-func (s errStatisticSlice) Len() int {
-	return len(s)
-}
-
-func (s errStatisticSlice) Less(i, j int) bool {
-	return s[i].id < s[j].id
-}
-
-func (s errStatisticSlice) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
 }
 
 // NewConsole init console
@@ -72,13 +62,15 @@ func NewConsole(targets []string) *Console {
 	errGroup.Border = false
 	errGroup.Height = 1
 	errGroup.Width = consoleWidth
-
+	nTargets := len(targets)
 	return &Console{
 		width:         consoleWidth,
 		height:        group.Height + errGroup.Height,
 		spGroup:       group,
 		errGroup:      errGroup,
-		errStatistics: make(map[int]errStatistic, len(targets)),
+		nItem:         nTargets,
+		errStatistics: make(map[int]*errStatistic, nTargets),
+		loopPeriodic:  defaultLoopPeriodic,
 	}
 }
 
@@ -91,37 +83,38 @@ func (c *Console) handleSpItem(item types.SpItem) {
 }
 
 func (c *Console) handleErr(iter uint64, e types.ErrItem) {
-	count := 1
 	if old, ok := c.errStatistics[e.Id]; ok {
-		count = old.count + 1
+		old.count += 1
+		old.lastIter = iter
+		old.last = e.Err
+		return
 	}
-	c.errStatistics[e.Id] = errStatistic{
+	c.errStatistics[e.Id] = &errStatistic{
 		id:       e.Id,
-		addr:     e.Target,
-		count:    count,
+		title:    e.Target,
+		count:    1,
 		last:     e.Err,
 		lastIter: iter,
 	}
 }
 
 func (c *Console) displayErr(iter uint64) {
-	errStatistics := make(errStatisticSlice, 0, len(c.errStatistics))
-	for _, e := range c.errStatistics {
-		errStatistics = append(errStatistics, e)
+	if c.errGroup.Height < len(c.errStatistics) {
+		c.errGroup.Height = len(c.errStatistics)
 	}
-	sort.Sort(errStatistics)
-
-	if c.errGroup.Height < len(errStatistics) {
-		c.errGroup.Height = len(errStatistics)
-	}
-	display := make([]string, 0, len(errStatistics))
-	for _, e := range errStatistics {
-		title := fmt.Sprintf("* %s:%s", e.addr, e.last)
+	display := make([]string, 0, len(c.errStatistics))
+	for i := 0; i < c.nItem; i += 1 {
+		e, ok := c.errStatistics[i]
+		if !ok {
+			continue
+		}
+		title := fmt.Sprintf("* %s:%s", e.title, e.last)
+		count := fmt.Sprintf("#%d", e.count)
 		format := fmt.Sprintf("%%s%%%dv", c.width-1-len(title))
-		if e.lastIter+10 >= iter { // remain 10 iter, e.g. 10 * 10ms
+		if e.lastIter+50 >= iter { // remain 10 iter, i.e. 50 * 10ms
 			format = fmt.Sprintf("[%s](fg-red)", format)
 		}
-		display = append(display, fmt.Sprintf(format, title, e.count))
+		display = append(display, fmt.Sprintf(format, title, count))
 	}
 	c.errGroup.Items = display
 }
@@ -152,9 +145,9 @@ func (c *Console) Run(resChan chan interface{}, onExit func()) {
 	}
 	defer termui.Close()
 
-	termui.DefaultEvtStream.Merge("timer", termui.NewTimerCh(time.Millisecond*10))
+	termui.DefaultEvtStream.Merge("timer", termui.NewTimerCh(c.loopPeriodic))
 
-	termui.Handle("/timer/10ms", func(e termui.Event) {
+	termui.Handle(fmt.Sprintf("/timer/%v", c.loopPeriodic), func(e termui.Event) {
 		t := e.Data.(termui.EvtTimer)
 		for {
 			select {
