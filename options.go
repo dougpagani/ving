@@ -19,16 +19,19 @@ for example: %s 127.0.0.1 192.168.0.1
 
 type option struct {
 	interval time.Duration
+	timeout  time.Duration
 }
 
 func (o *option) isValid() bool {
-	return o.interval >= 10*time.Millisecond
+	return o.interval >= 10*time.Millisecond &&
+		o.timeout >= 10*time.Millisecond
 }
 
 func parseOptions() *option {
 	flag.Usage = printUsage
 	opt := option{}
 	flag.DurationVar(&opt.interval, "i", time.Second, "ping interval, must >=10ms")
+	flag.DurationVar(&opt.timeout, "t", time.Second, "ping timeout, must >=10ms")
 	flag.Parse()
 	if !opt.isValid() {
 		flag.Usage()

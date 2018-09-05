@@ -13,18 +13,18 @@ import (
 
 func pingTarget(
 	ping *net.Ping,
-	interval time.Duration,
+	opt *option,
 	header types.ItemHeader,
 	resChan chan interface{},
 	stopChan chan bool,
 ) {
-	t := time.NewTicker(interval)
+	t := time.NewTicker(opt.interval)
 	for {
 		select {
 		case <-stopChan:
 			return
 		case <-t.C:
-			duration, e := ping.PingOnce(header.Target)
+			duration, e := ping.PingOnce(header.Target, opt.timeout)
 			header.Iter++
 			if e != nil {
 				resChan <- types.ErrItem{
@@ -63,7 +63,7 @@ func main() {
 			ID:     idx,
 			Target: target,
 		}
-		go pingTarget(ping, opt.interval, header, resChan, stopChan)
+		go pingTarget(ping, opt, header, resChan, stopChan)
 	}
 
 	console := ui.NewConsole(targets)

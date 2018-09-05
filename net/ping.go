@@ -190,20 +190,20 @@ func (p *Ping) send(ipAddr *net.IPAddr, c *connSource) (*time.Time, *session, er
 }
 
 // PingOnce to target with address as `addr`
-func (p *Ping) PingOnce(addr string) (time.Duration, error) {
+func (p *Ping) PingOnce(addr string, timeout time.Duration) (time.Duration, error) {
 	ipAddr, err := net.ResolveIPAddr("ip", addr)
 	if err != nil {
 		return 0, err
 	}
 
-	return p.doPing(ipAddr)
+	return p.doPing(ipAddr, timeout)
 }
 
 func (p *Ping) finishSession(s *session) {
 	p.sessions.Delete(s.id)
 }
 
-func (p *Ping) doPing(ipAddr *net.IPAddr) (time.Duration, error) {
+func (p *Ping) doPing(ipAddr *net.IPAddr, timeout time.Duration) (time.Duration, error) {
 	var c *connSource
 	if ipAddr.IP.To4() != nil {
 		c = p.conn
@@ -214,10 +214,10 @@ func (p *Ping) doPing(ipAddr *net.IPAddr) (time.Duration, error) {
 	if e != nil {
 		return 0, e
 	}
-	timeout := time.NewTimer(time.Second * 2)
+	timer := time.NewTimer(timeout)
 	defer p.finishSession(session)
 	select {
-	case <-timeout.C:
+	case <-timer.C:
 		return 0, fmt.Errorf("timeout")
 	case pongAt := <-session.ch:
 		return pongAt.Sub(*since), nil
