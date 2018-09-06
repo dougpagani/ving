@@ -9,6 +9,7 @@ Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 
 * ping multiple targets independently at once;
 * ping interval option;
+* error rate and speed statistics as emoji;
 * responsive terminal display (based on termui).
 
 # Install

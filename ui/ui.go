@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"time"
 
@@ -34,16 +35,43 @@ type statistic struct {
 	id    int
 	title string
 
-	total         int
-	errCount      int
-	iter          uint64
-	lastDisplay   interface{}
-	spValue       []int
-	lastErr       string
-	lastNIterErrs []uint64
+	total             int
+	errCount          int
+	iter              uint64
+	cost              []int
+	lastErr           string
+	lastErrIter       uint64
+	lastNIterRecord   []recordWithIter
+	lastNIterErrCount int
+	lastNIterCost     int64
 
 	block *termui.Sparkline
 	group *termui.Sparklines
+}
+
+func (s *statistic) lastRecord() *recordWithIter {
+	n := len(s.lastNIterRecord)
+	if n == 0 {
+		return nil
+	}
+	return &s.lastNIterRecord[n-1]
+}
+
+func (s *statistic) lastErrRate() float64 {
+	return float64(s.lastNIterErrCount) / float64(len(s.lastNIterRecord))
+}
+
+func (s *statistic) lastAverageCost() int64 {
+	successfulCount := len(s.lastNIterRecord) - s.lastNIterErrCount
+	if successfulCount <= 0 {
+		return math.MaxInt64
+	}
+	return s.lastNIterCost / int64(successfulCount)
+}
+
+type recordWithIter struct {
+	iter   uint64
+	record types.Record
 }
 
 // NewConsole init console
@@ -95,40 +123,65 @@ func NewConsole(targets []string) *Console {
 
 func (c *Console) resizeSpGroup() {
 	for _, s := range c.statistics {
-		crtSize := len(s.spValue)
+		crtSize := len(s.cost)
 		targetSize := c.dataLen(s)
 		if crtSize == 0 || crtSize == targetSize {
 			continue
 		}
 		if crtSize < targetSize {
-			s.spValue = append(make([]int, targetSize-crtSize), s.spValue...)
+			s.cost = append(make([]int, targetSize-crtSize), s.cost...)
 		} else {
-			s.spValue = s.spValue[crtSize-targetSize:]
+			s.cost = s.cost[crtSize-targetSize:]
 		}
 	}
 }
 
 func (c *Console) renderSp(iter uint64) {
 	for _, s := range c.statistics {
-		res := fmt.Sprintf("%v #%d(#%d)", s.lastDisplay, s.total, s.errCount)
-		format := fmt.Sprintf("%%s%%%dv", c.dataLen(s)-len(s.title))
-		s.block.Title = fmt.Sprintf(format, s.title, res)
-		s.block.Data = s.spValue
+		lastRecord := s.lastRecord()
+		if lastRecord == nil {
+			continue
+		}
+		var view interface{}
+		if lastRecord.record.Successful {
+			view = lastRecord.record.Cost
+		} else {
+			view = "Err"
+		}
+
+		var flag string
+		rate := s.lastErrRate()
+		if rate < 0.01 {
+			flag = "🐸"
+		} else if rate < 0.1 {
+			flag = "🦁"
+		} else {
+			flag = "🙈"
+		}
+		if s.lastAverageCost() < int64(5*time.Millisecond) {
+			flag += " ⚡️"
+		}
+		title := fmt.Sprintf("%s %s", flag, s.title)
+
+		res := fmt.Sprintf("%v #%d[#%d]", view, s.total, s.errCount)
+
+		textLen := c.dataLen(s)
+		format := fmt.Sprintf("%%-%ds%%%dv", textLen/2, textLen-textLen/2-1)
+		s.block.Title = fmt.Sprintf(format, title, res)
+		s.block.Data = s.cost
 	}
 }
 
 func (c *Console) renderErr(iter uint64) {
 	display := make([]string, 0, len(c.statistics))
 	for i := 0; i < c.nItem; i++ {
-		e, ok := c.statistics[i]
-		if !ok || len(e.lastNIterErrs) == 0 || e.lastErr == "" {
+		s, ok := c.statistics[i]
+		if !ok || s.lastErrIter == 0 {
 			continue
 		}
-		lastErrIter := e.lastNIterErrs[len(e.lastNIterErrs)-1]
-
-		title := fmt.Sprintf("* %s:%s", e.title, e.lastErr)
+		title := fmt.Sprintf("* %s:%s", s.title, s.lastErr)
 		format := "%s"
-		if lastErrIter+errHighlightWindow >= iter {
+		if s.lastErrIter+errHighlightWindow >= iter {
 			format = "[%s](fg-red)"
 		}
 		display = append(display, fmt.Sprintf(format, title))
@@ -164,22 +217,25 @@ func (c *Console) handleRes(iter uint64, record types.Record) {
 	var s *statistic
 	s = c.getStatistic(record.RecordHeader)
 	s.iter = iter
+	s.total = record.Rounds
+	s.lastNIterRecord = append(s.lastNIterRecord, recordWithIter{
+		iter:   iter,
+		record: record,
+	})
 
 	size := c.dataLen(s)
-	if len(s.spValue) == 0 {
-		s.spValue = make([]int, size)
+	if len(s.cost) == 0 {
+		s.cost = make([]int, size)
 	}
-	s.total = record.Rounds
 	if record.Successful {
-		s.spValue = append(s.spValue[1:], int(record.Cost))
-		s.lastDisplay = record.Cost
+		s.lastNIterCost += int64(record.Cost)
+		s.cost = append(s.cost[1:], int(record.Cost))
 	} else {
 		s.errCount++
+		s.lastNIterErrCount++
 		s.lastErr = record.ErrMsg
-		s.lastNIterErrs = append(s.lastNIterErrs, s.iter)
-
-		s.spValue = append(s.spValue[1:], 0)
-		s.lastDisplay = "Err"
+		s.lastErrIter = iter
+		s.cost = append(s.cost[1:], 0)
 	}
 }
 
@@ -228,11 +284,17 @@ func (c *Console) Run(recordChan chan types.Record, onExit func()) {
 		t := e.Data.(termui.EvtTimer)
 
 		for _, s := range c.statistics {
-			for i := 0; i < len(s.lastNIterErrs); i++ {
-				if s.lastNIterErrs[i]+errStatisticWindow < t.Count {
+			for i := 0; i < len(s.lastNIterRecord); i++ {
+				record := s.lastNIterRecord[i]
+				if record.iter+errStatisticWindow < t.Count {
+					if !record.record.Successful {
+						s.lastNIterErrCount--
+					} else {
+						s.lastNIterCost -= int64(record.record.Cost)
+					}
 					continue
 				}
-				s.lastNIterErrs = s.lastNIterErrs[i:]
+				s.lastNIterRecord = s.lastNIterRecord[i:]
 				break
 			}
 		}
