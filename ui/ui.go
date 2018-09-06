@@ -9,135 +9,184 @@ import (
 	"github.com/yittg/ving/types"
 )
 
-const defaultLoopPeriodic = time.Millisecond * 10
+const (
+	defaultLoopPeriodic = time.Millisecond * 10
+	errStatisticWindow  = 1000
+	errHighlightWindow  = 50
+
+	chartHeight = 3
+)
 
 // Console display
 type Console struct {
-	height int
+	nItem      int
+	statistics map[int]*statistic
 
-	nItem         int
-	errStatistics map[int]*errStatistic
-
-	spGroup  *termui.Sparklines
-	errGroup *termui.List
+	chartColumnN int
+	chartRowN    int
+	spGroup      []*termui.Sparklines
+	errGroup     *termui.List
 
 	loopPeriodic time.Duration
 }
 
-type errStatistic struct {
-	id       int
-	title    string
-	count    int
-	last     string
-	lastIter uint64
+type statistic struct {
+	id    int
+	title string
+
+	total         int
+	errCount      int
+	iter          uint64
+	lastDisplay   interface{}
+	spValue       []int
+	lastErr       string
+	lastNIterErrs []uint64
+
+	block *termui.Sparkline
+	group *termui.Sparklines
 }
 
 // NewConsole init console
 func NewConsole(targets []string) *Console {
-	spHeight := 3
-	sparkLines := make([]termui.Sparkline, 0, len(targets))
+	nTargets := len(targets)
+	chartColumn := 1
+	chartRow := (nTargets + chartColumn - 1) / chartColumn
+	sparkLines := make([]termui.Sparkline, 0, nTargets)
 	rand.Seed(time.Now().Unix())
 	color := rand.Intn(termui.NumberofColors - 2)
 	for i, target := range targets {
 		sp := termui.Sparkline{}
-		sp.Height = spHeight
+		sp.Height = chartHeight
 		sp.Title = target
 		sp.LineColor = termui.Attribute((color+i)%(termui.NumberofColors-2) + 2)
 		sp.TitleColor = termui.ColorWhite
 		sparkLines = append(sparkLines, sp)
 	}
 
-	group := termui.NewSparklines(sparkLines...)
-	group.Height = len(sparkLines)*(spHeight+1) + 2
-	group.Border = false
+	groups := make([]*termui.Sparklines, 0, chartColumn)
+	for i := 0; i < chartColumn; i++ {
+		var members []termui.Sparkline
+		if i == chartColumn-1 {
+			members = sparkLines[i*chartRow:]
+		} else {
+			members = sparkLines[i*chartRow : (i+1)*chartRow]
+		}
+
+		g := termui.NewSparklines(members...)
+		g.Height = chartRow*(chartHeight+1) + 1
+		g.Border = false
+		groups = append(groups, g)
+	}
 
 	errGroup := termui.NewList()
 	errGroup.Border = false
-	errGroup.Height = 1
-	nTargets := len(targets)
+	errGroup.Height = 2
+
 	return &Console{
-		height:        group.Height + errGroup.Height,
-		spGroup:       group,
-		errGroup:      errGroup,
-		nItem:         nTargets,
-		errStatistics: make(map[int]*errStatistic, nTargets),
-		loopPeriodic:  defaultLoopPeriodic,
+		spGroup:      groups,
+		errGroup:     errGroup,
+		nItem:        nTargets,
+		chartColumnN: chartColumn,
+		chartRowN:    chartRow,
+		statistics:   make(map[int]*statistic, nTargets),
+		loopPeriodic: defaultLoopPeriodic,
 	}
 }
 
-func (c *Console) handleSpItem(item types.SpItem) {
-	line := &(c.spGroup.Lines[item.ID])
-	size := c.dataLen()
-	if len(line.Data) == 0 {
-		line.Data = make([]int, size)
+func (c *Console) handleSpItem(s *statistic, item types.SpItem) {
+	size := c.dataLen(s)
+	if len(s.spValue) == 0 {
+		s.spValue = make([]int, size)
 	}
-	line.Data = append(line.Data[1:], item.Value)
-	res := fmt.Sprintf("%v #%d", item.Display, item.Iter)
-	format := fmt.Sprintf("%%s%%%dv", size-len(item.Target))
-	line.Title = fmt.Sprintf(format, item.Target, res)
+	s.total = item.Iter
+	s.spValue = append(s.spValue[1:], item.Value)
+	s.lastDisplay = item.Display
+
 }
 
 func (c *Console) resizeSpGroup() {
-	targetSize := c.dataLen()
-	for i := 0; i < len(c.spGroup.Lines); i++ {
-		line := &(c.spGroup.Lines[i])
-		crtSize := len(line.Data)
+	for _, s := range c.statistics {
+		crtSize := len(s.spValue)
+		targetSize := c.dataLen(s)
 		if crtSize == 0 || crtSize == targetSize {
 			continue
 		}
 		if crtSize < targetSize {
-			line.Data = append(make([]int, targetSize-crtSize), line.Data...)
+			s.spValue = append(make([]int, targetSize-crtSize), s.spValue...)
 		} else {
-			line.Data = line.Data[crtSize-targetSize:]
+			s.spValue = s.spValue[crtSize-targetSize:]
 		}
 	}
 }
 
-func (c *Console) handleErr(iter uint64, e types.ErrItem) {
-	if old, ok := c.errStatistics[e.ID]; ok {
-		old.count++
-		old.lastIter = iter
-		old.last = e.Err
-		return
-	}
-	c.errStatistics[e.ID] = &errStatistic{
-		id:       e.ID,
-		title:    e.Target,
-		count:    1,
-		last:     e.Err,
-		lastIter: iter,
+func (c *Console) handleErr(s *statistic, e types.ErrItem) {
+	s.errCount++
+	s.lastErr = e.Err
+	s.lastNIterErrs = append(s.lastNIterErrs, s.iter)
+}
+
+func (c *Console) renderSp(iter uint64) {
+	for _, s := range c.statistics {
+		res := fmt.Sprintf("%v #%d(#%d)", s.lastDisplay, s.total, s.errCount)
+		format := fmt.Sprintf("%%s%%%dv", c.dataLen(s)-len(s.title))
+		s.block.Title = fmt.Sprintf(format, s.title, res)
+		s.block.Data = s.spValue
 	}
 }
 
-func (c *Console) displayErr(iter uint64) {
-	if c.errGroup.Height < len(c.errStatistics) {
-		c.errGroup.Height = len(c.errStatistics)
-	}
-	display := make([]string, 0, len(c.errStatistics))
+func (c *Console) renderErr(iter uint64) {
+	display := make([]string, 0, len(c.statistics))
 	for i := 0; i < c.nItem; i++ {
-		e, ok := c.errStatistics[i]
-		if !ok {
+		e, ok := c.statistics[i]
+		if !ok || len(e.lastNIterErrs) == 0 || e.lastErr == "" {
 			continue
 		}
-		title := fmt.Sprintf("* %s:%s", e.title, e.last)
-		count := fmt.Sprintf("#%d", e.count)
-		format := fmt.Sprintf("%%s%%%dv", c.errTextLen()-len(title))
-		if e.lastIter+50 >= iter { // remain 10 iter, i.e. 50 * 10ms
-			format = fmt.Sprintf("[%s](fg-red)", format)
+		lastErrIter := e.lastNIterErrs[len(e.lastNIterErrs)-1]
+
+		title := fmt.Sprintf("* %s:%s", e.title, e.lastErr)
+		format := "%s"
+		if lastErrIter+errHighlightWindow >= iter {
+			format = "[%s](fg-red)"
 		}
-		display = append(display, fmt.Sprintf(format, title, count))
+		display = append(display, fmt.Sprintf(format, title))
+	}
+	if c.errGroup.Height < len(display) {
+		c.errGroup.Height = len(display)
 	}
 	c.errGroup.Items = display
 }
 
+func (c *Console) getTarget(header types.ItemHeader) *statistic {
+	target, ok := c.statistics[header.ID]
+	if !ok {
+		group, block := c.allocatedBlock(header.ID)
+		target = &statistic{
+			id:    header.ID,
+			title: header.Target,
+			total: header.Iter,
+			block: block,
+			group: group,
+		}
+		c.statistics[header.ID] = target
+	}
+	return target
+}
+
 func (c *Console) handleRes(iter uint64, res interface{}) {
+
+	var target *statistic
 	switch res.(type) {
 	case types.SpItem:
-		c.handleSpItem(res.(types.SpItem))
+		spItem := res.(types.SpItem)
+		target = c.getTarget(spItem.ItemHeader)
+		target.iter = iter
+		c.handleSpItem(target, spItem)
 	case types.ErrItem:
 		errItem := res.(types.ErrItem)
-		c.handleErr(iter, errItem)
-		c.handleSpItem(types.SpItem{
+		target = c.getTarget(errItem.ItemHeader)
+		target.iter = iter
+		c.handleErr(target, errItem)
+		c.handleSpItem(target, types.SpItem{
 			ItemHeader: errItem.ItemHeader,
 			Value:      0,
 			Display:    "E",
@@ -145,19 +194,27 @@ func (c *Console) handleRes(iter uint64, res interface{}) {
 	default:
 		// ignore
 	}
-	c.displayErr(iter)
+	c.renderSp(iter)
 }
 
 func (c *Console) width() int {
 	return termui.Body.Width
 }
 
-func (c *Console) dataLen() int {
-	return c.width()
+func (c *Console) dataLen(s *statistic) int {
+	return s.group.Width - 1
 }
 
 func (c *Console) errTextLen() int {
 	return c.width() - 1
+}
+
+func (c *Console) allocatedBlock(idx int) (*termui.Sparklines, *termui.Sparkline) {
+	groupID := idx / c.chartRowN
+	subID := idx % c.chartRowN
+	group := termui.Body.Rows[0].Cols[groupID].Widget.(*termui.Sparklines)
+	sp := &(group.Lines[subID])
+	return group, sp
 }
 
 // Run a spark line ui
@@ -167,10 +224,13 @@ func (c *Console) Run(resChan chan interface{}, onExit func()) {
 	}
 	defer termui.Close()
 
+	groupCols := make([]*termui.Row, 0, len(c.spGroup))
+	for _, g := range c.spGroup {
+		groupCols = append(groupCols, termui.NewCol(12/c.chartColumnN, 0, g))
+	}
+
 	termui.Body.AddRows(
-		termui.NewRow(
-			termui.NewCol(12, 0, c.spGroup),
-		),
+		termui.NewRow(groupCols...),
 		termui.NewRow(
 			termui.NewCol(12, 0, c.errGroup),
 		),
@@ -180,11 +240,22 @@ func (c *Console) Run(resChan chan interface{}, onExit func()) {
 	termui.DefaultEvtStream.Merge("timer", termui.NewTimerCh(c.loopPeriodic))
 	termui.Handle(fmt.Sprintf("/timer/%v", c.loopPeriodic), func(e termui.Event) {
 		t := e.Data.(termui.EvtTimer)
+
+		for _, s := range c.statistics {
+			for i := 0; i < len(s.lastNIterErrs); i++ {
+				if s.lastNIterErrs[i]+errStatisticWindow < t.Count {
+					continue
+				}
+				s.lastNIterErrs = s.lastNIterErrs[i:]
+				break
+			}
+		}
 		for {
 			select {
 			case res := <-resChan:
 				c.handleRes(t.Count, res)
 			default:
+				c.renderErr(t.Count)
 				termui.Render(termui.Body)
 				return
 			}
