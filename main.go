@@ -14,8 +14,8 @@ import (
 func pingTarget(
 	ping *net.Ping,
 	opt *option,
-	header types.ItemHeader,
-	resChan chan interface{},
+	header types.RecordHeader,
+	recordChan chan types.Record,
 	stopChan chan bool,
 ) {
 	t := time.NewTicker(opt.interval)
@@ -25,17 +25,18 @@ func pingTarget(
 			return
 		case <-t.C:
 			duration, e := ping.PingOnce(header.Target, opt.timeout)
-			header.Iter++
+			header.Rounds++
 			if e != nil {
-				resChan <- types.ErrItem{
-					ItemHeader: header,
-					Err:        e.Error(),
+				recordChan <- types.Record{
+					RecordHeader: header,
+					Successful:   false,
+					ErrMsg:       e.Error(),
 				}
 			} else {
-				resChan <- types.SpItem{
-					ItemHeader: header,
-					Value:      int(duration),
-					Display:    duration,
+				recordChan <- types.Record{
+					RecordHeader: header,
+					Successful:   true,
+					Cost:         duration,
 				}
 			}
 		}
@@ -55,19 +56,19 @@ func main() {
 		os.Exit(2)
 	}
 
-	resChan := make(chan interface{}, len(targets))
+	recordChan := make(chan types.Record, len(targets))
 	stopChan := make(chan bool, 2)
 
 	for idx, target := range targets {
-		header := types.ItemHeader{
+		header := types.RecordHeader{
 			ID:     idx,
 			Target: target,
 		}
-		go pingTarget(ping, opt, header, resChan, stopChan)
+		go pingTarget(ping, opt, header, recordChan, stopChan)
 	}
 
 	console := ui.NewConsole(targets)
-	console.Run(resChan, func() {
+	console.Run(recordChan, func() {
 		close(stopChan)
 		ping.Stop()
 	})

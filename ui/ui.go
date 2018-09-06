@@ -93,17 +93,6 @@ func NewConsole(targets []string) *Console {
 	}
 }
 
-func (c *Console) handleSpItem(s *statistic, item types.SpItem) {
-	size := c.dataLen(s)
-	if len(s.spValue) == 0 {
-		s.spValue = make([]int, size)
-	}
-	s.total = item.Iter
-	s.spValue = append(s.spValue[1:], item.Value)
-	s.lastDisplay = item.Display
-
-}
-
 func (c *Console) resizeSpGroup() {
 	for _, s := range c.statistics {
 		crtSize := len(s.spValue)
@@ -117,12 +106,6 @@ func (c *Console) resizeSpGroup() {
 			s.spValue = s.spValue[crtSize-targetSize:]
 		}
 	}
-}
-
-func (c *Console) handleErr(s *statistic, e types.ErrItem) {
-	s.errCount++
-	s.lastErr = e.Err
-	s.lastNIterErrs = append(s.lastNIterErrs, s.iter)
 }
 
 func (c *Console) renderSp(iter uint64) {
@@ -156,14 +139,19 @@ func (c *Console) renderErr(iter uint64) {
 	c.errGroup.Items = display
 }
 
-func (c *Console) getTarget(header types.ItemHeader) *statistic {
+func (c *Console) render(iter uint64) {
+	c.renderSp(iter)
+	c.renderErr(iter)
+}
+
+func (c *Console) getStatistic(header types.RecordHeader) *statistic {
 	target, ok := c.statistics[header.ID]
 	if !ok {
 		group, block := c.allocatedBlock(header.ID)
 		target = &statistic{
 			id:    header.ID,
 			title: header.Target,
-			total: header.Iter,
+			total: header.Rounds,
 			block: block,
 			group: group,
 		}
@@ -172,29 +160,27 @@ func (c *Console) getTarget(header types.ItemHeader) *statistic {
 	return target
 }
 
-func (c *Console) handleRes(iter uint64, res interface{}) {
+func (c *Console) handleRes(iter uint64, record types.Record) {
+	var s *statistic
+	s = c.getStatistic(record.RecordHeader)
+	s.iter = iter
 
-	var target *statistic
-	switch res.(type) {
-	case types.SpItem:
-		spItem := res.(types.SpItem)
-		target = c.getTarget(spItem.ItemHeader)
-		target.iter = iter
-		c.handleSpItem(target, spItem)
-	case types.ErrItem:
-		errItem := res.(types.ErrItem)
-		target = c.getTarget(errItem.ItemHeader)
-		target.iter = iter
-		c.handleErr(target, errItem)
-		c.handleSpItem(target, types.SpItem{
-			ItemHeader: errItem.ItemHeader,
-			Value:      0,
-			Display:    "E",
-		})
-	default:
-		// ignore
+	size := c.dataLen(s)
+	if len(s.spValue) == 0 {
+		s.spValue = make([]int, size)
 	}
-	c.renderSp(iter)
+	s.total = record.Rounds
+	if record.Successful {
+		s.spValue = append(s.spValue[1:], int(record.Cost))
+		s.lastDisplay = record.Cost
+	} else {
+		s.errCount++
+		s.lastErr = record.ErrMsg
+		s.lastNIterErrs = append(s.lastNIterErrs, s.iter)
+
+		s.spValue = append(s.spValue[1:], 0)
+		s.lastDisplay = "Err"
+	}
 }
 
 func (c *Console) width() int {
@@ -218,7 +204,7 @@ func (c *Console) allocatedBlock(idx int) (*termui.Sparklines, *termui.Sparkline
 }
 
 // Run a spark line ui
-func (c *Console) Run(resChan chan interface{}, onExit func()) {
+func (c *Console) Run(recordChan chan types.Record, onExit func()) {
 	if err := termui.Init(); err != nil {
 		panic(err)
 	}
@@ -252,10 +238,10 @@ func (c *Console) Run(resChan chan interface{}, onExit func()) {
 		}
 		for {
 			select {
-			case res := <-resChan:
+			case res := <-recordChan:
 				c.handleRes(t.Count, res)
 			default:
-				c.renderErr(t.Count)
+				c.render(t.Count)
 				termui.Render(termui.Body)
 				return
 			}
