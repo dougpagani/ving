@@ -1,24 +1,24 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/yittg/ving)](https://goreportcard.com/report/github.com/yittg/ving)
 
-# ving
+# 🐸 ving
 
 `ving` is a visualization ping utility written in Golang(1.11+).
 Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 
-# Features
+# 🦁 Features
 
 * ping multiple targets independently at once;
 * ping interval option;
-* error rate and speed statistics as emoji;
+* error rate and speed statistics in sliding window, as emoji;
 * responsive terminal display (based on termui).
 
-# Install
+# 🙈 Install
 
 ```
 $ go get -u github.com/yittg/ving
 ```
 
-# Usage
+# ⚡ Usage
 
 ```
 $ ving 192.168.0.1 127.0.0.1 8.8.8.8
