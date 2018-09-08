@@ -2,17 +2,16 @@ package ui
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
 	"time"
 
 	"github.com/gizak/termui"
+	"github.com/yittg/ving/statistic"
 	"github.com/yittg/ving/types"
 )
 
 const (
 	defaultLoopPeriodic = time.Millisecond * 10
-	errStatisticWindow  = 1000
 	errHighlightWindow  = 50
 
 	chartHeight = 3
@@ -20,8 +19,8 @@ const (
 
 // Console display
 type Console struct {
-	nItem      int
-	statistics map[int]*statistic
+	nItem       int
+	renderUnits map[int]*renderUnit
 
 	chartColumnN int
 	chartRowN    int
@@ -31,49 +30,10 @@ type Console struct {
 	loopPeriodic time.Duration
 }
 
-type statistic struct {
-	id    int
-	title string
-
-	total             int
-	errCount          int
-	iter              uint64
-	cost              []int
-	lastErr           string
-	lastErrIter       uint64
-	lastNIterRecord   []recordWithIter
-	lastNIterErrCount int
-	lastNIterCost     int64
-
-	dead bool
-
-	block *termui.Sparkline
-	group *termui.Sparklines
-}
-
-func (s *statistic) lastRecord() *recordWithIter {
-	n := len(s.lastNIterRecord)
-	if n == 0 {
-		return nil
-	}
-	return &s.lastNIterRecord[n-1]
-}
-
-func (s *statistic) lastErrRate() float64 {
-	return float64(s.lastNIterErrCount) / float64(len(s.lastNIterRecord))
-}
-
-func (s *statistic) lastAverageCost() int64 {
-	successfulCount := len(s.lastNIterRecord) - s.lastNIterErrCount
-	if successfulCount <= 0 {
-		return math.MaxInt64
-	}
-	return s.lastNIterCost / int64(successfulCount)
-}
-
-type recordWithIter struct {
-	iter   uint64
-	record types.Record
+type renderUnit struct {
+	statistic *statistic.Detail
+	block     *termui.Sparkline
+	group     *termui.Sparklines
 }
 
 // NewConsole init console
@@ -118,44 +78,39 @@ func NewConsole(targets []string) *Console {
 		nItem:        nTargets,
 		chartColumnN: chartColumn,
 		chartRowN:    chartRow,
-		statistics:   make(map[int]*statistic, nTargets),
+		renderUnits:  make(map[int]*renderUnit, nTargets),
 		loopPeriodic: defaultLoopPeriodic,
 	}
 }
 
 func (c *Console) resizeSpGroup() {
-	for _, s := range c.statistics {
-		crtSize := len(s.cost)
-		targetSize := c.dataLen(s)
-		if crtSize == 0 || crtSize == targetSize {
+	for _, s := range c.renderUnits {
+		s.statistic.ResizeViewWindow(c.dataLen(s))
+	}
+}
+
+func (c *Console) retireRecord(iter uint64) {
+	for _, ru := range c.renderUnits {
+		if ru.statistic.Dead {
 			continue
 		}
-		if crtSize < targetSize {
-			s.cost = append(make([]int, targetSize-crtSize), s.cost...)
-		} else {
-			s.cost = s.cost[crtSize-targetSize:]
-		}
+		ru.statistic.RetireRecord(iter)
 	}
 }
 
 func (c *Console) renderSp(iter uint64) {
-	for _, s := range c.statistics {
-		lastRecord := s.lastRecord()
+	for _, ru := range c.renderUnits {
+		s := ru.statistic
+		lastRecord := s.LastRecord()
 		if lastRecord == nil {
 			continue
 		}
-		var view interface{}
-		if lastRecord.record.Successful {
-			view = lastRecord.record.Cost
-		} else {
-			view = "Err"
-		}
 
 		var flag string
-		if s.dead {
+		if s.Dead {
 			flag = "❌"
 		} else {
-			rate := s.lastErrRate()
+			rate := s.LastErrRate()
 			if rate < 0.01 {
 				flag = "🐸"
 			} else if rate < 0.1 {
@@ -163,32 +118,37 @@ func (c *Console) renderSp(iter uint64) {
 			} else {
 				flag = "🙈"
 			}
-			if s.lastAverageCost() < int64(5*time.Millisecond) {
+			if s.LastAverageCost() < int64(5*time.Millisecond) {
 				flag += " ⚡️"
 			}
 		}
 
-		title := fmt.Sprintf("%s %s", flag, s.title)
+		title := fmt.Sprintf("%s %s", flag, s.Title)
 
-		res := fmt.Sprintf("%v #%d[#%d]", view, s.total, s.errCount)
+		res := fmt.Sprintf("%v #%d[#%d]", lastRecord.View(), s.Total, s.ErrCount)
 
-		textLen := c.dataLen(s)
+		textLen := c.dataLen(ru)
 		format := fmt.Sprintf("%%-%ds%%%dv", textLen/2, textLen-textLen/2-1)
-		s.block.Title = fmt.Sprintf(format, title, res)
-		s.block.Data = s.cost
+		ru.block.Title = fmt.Sprintf(format, title, res)
+		ru.block.Data = s.Cost
 	}
 }
 
 func (c *Console) renderErr(iter uint64) {
-	display := make([]string, 0, len(c.statistics))
+	display := make([]string, 0, len(c.renderUnits))
 	for i := 0; i < c.nItem; i++ {
-		s, ok := c.statistics[i]
-		if !ok || s.lastErrIter == 0 {
+		ru, ok := c.renderUnits[i]
+		if !ok {
 			continue
 		}
-		title := fmt.Sprintf("* %s:%s", s.title, s.lastErr)
+		s := ru.statistic
+		lastErr := s.LastErrorRecord()
+		if lastErr == nil {
+			continue
+		}
+		title := fmt.Sprintf("* %s:%s", s.Title, lastErr.Err)
 		format := "%s"
-		if s.lastErrIter+errHighlightWindow >= iter {
+		if lastErr.Iter+errHighlightWindow >= iter {
 			format = "[%s](fg-red)"
 		}
 		display = append(display, fmt.Sprintf(format, title))
@@ -204,57 +164,31 @@ func (c *Console) render(iter uint64) {
 	c.renderErr(iter)
 }
 
-func (c *Console) getStatistic(header types.RecordHeader) *statistic {
-	target, ok := c.statistics[header.ID]
+func (c *Console) getRenderUnit(header types.RecordHeader) *renderUnit {
+	target, ok := c.renderUnits[header.ID]
 	if !ok {
 		group, block := c.allocatedBlock(header.ID)
-		target = &statistic{
-			id:    header.ID,
-			title: header.Target.Raw,
-			total: header.Rounds,
+		target = &renderUnit{
+			statistic: &statistic.Detail{
+				ID:    header.ID,
+				Title: header.Target.Raw,
+				Total: header.Rounds,
+			},
 			block: block,
 			group: group,
 		}
-		c.statistics[header.ID] = target
+		target.statistic.ResizeViewWindow(c.dataLen(target))
+		c.renderUnits[header.ID] = target
 	}
 	return target
-}
-
-func (c *Console) handleRes(iter uint64, record types.Record) {
-	var s *statistic
-	s = c.getStatistic(record.RecordHeader)
-	s.iter = iter
-	s.total = record.Rounds
-	s.lastNIterRecord = append(s.lastNIterRecord, recordWithIter{
-		iter:   iter,
-		record: record,
-	})
-
-	size := c.dataLen(s)
-	if len(s.cost) == 0 {
-		s.cost = make([]int, size)
-	}
-	if record.Successful {
-		s.lastNIterCost += int64(record.Cost)
-		s.cost = append(s.cost[1:], int(record.Cost))
-	} else {
-		s.errCount++
-		s.lastNIterErrCount++
-		s.lastErr = record.ErrMsg
-		s.lastErrIter = iter
-		s.cost = append(s.cost[1:], 0)
-		if record.IsFatal {
-			s.dead = true
-		}
-	}
 }
 
 func (c *Console) width() int {
 	return termui.Body.Width
 }
 
-func (c *Console) dataLen(s *statistic) int {
-	return s.group.Width - 1
+func (c *Console) dataLen(ru *renderUnit) int {
+	return ru.group.Width - 1
 }
 
 func (c *Console) errTextLen() int {
@@ -292,29 +226,13 @@ func (c *Console) Run(recordChan chan types.Record, onExit func()) {
 	termui.DefaultEvtStream.Merge("timer", termui.NewTimerCh(c.loopPeriodic))
 	termui.Handle(fmt.Sprintf("/timer/%v", c.loopPeriodic), func(e termui.Event) {
 		t := e.Data.(termui.EvtTimer)
+		c.retireRecord(t.Count)
 
-		for _, s := range c.statistics {
-			if s.dead {
-				continue
-			}
-			for i := 0; i < len(s.lastNIterRecord); i++ {
-				record := s.lastNIterRecord[i]
-				if record.iter+errStatisticWindow < t.Count {
-					if !record.record.Successful {
-						s.lastNIterErrCount--
-					} else {
-						s.lastNIterCost -= int64(record.record.Cost)
-					}
-					continue
-				}
-				s.lastNIterRecord = s.lastNIterRecord[i:]
-				break
-			}
-		}
 		for {
 			select {
 			case res := <-recordChan:
-				c.handleRes(t.Count, res)
+				ru := c.getRenderUnit(res.RecordHeader)
+				ru.statistic.DealRecord(t.Count, res)
 			default:
 				c.render(t.Count)
 				termui.Render(termui.Body)
