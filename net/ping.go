@@ -217,7 +217,7 @@ func (p *Ping) doPing(ipAddr *net.IPAddr, timeout time.Duration) (time.Duration,
 	defer p.finishSession(session)
 	select {
 	case <-timer.C:
-		return 0, fmt.Errorf("timeout")
+		return 0, &ErrTimeout{}
 	case pongAt := <-session.ch:
 		return pongAt.Sub(*since), nil
 	}

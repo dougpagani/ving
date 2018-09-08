@@ -36,10 +36,15 @@ func pingTarget(
 			duration, e := ping.PingOnce(header.Target, opt.timeout)
 			header.Rounds++
 			if e != nil {
+				_, isTimeout := e.(*net.ErrTimeout)
 				recordChan <- types.Record{
 					RecordHeader: header,
 					Successful:   false,
 					ErrMsg:       e.Error(),
+					IsFatal:      !isTimeout,
+				}
+				if !isTimeout {
+					return
 				}
 			} else {
 				recordChan <- types.Record{
