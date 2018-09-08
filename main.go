@@ -18,6 +18,15 @@ func pingTarget(
 	recordChan chan types.Record,
 	stopChan chan bool,
 ) {
+	if header.Target.Typ == net.Unknown {
+		recordChan <- types.Record{
+			RecordHeader: header,
+			Successful:   false,
+			ErrMsg:       header.Target.Target.(error).Error(),
+			IsFatal:      true,
+		}
+		return
+	}
 	t := time.NewTicker(opt.interval)
 	for {
 		select {
@@ -56,10 +65,15 @@ func main() {
 		os.Exit(2)
 	}
 
+	networkTargets := make([]*net.NetworkTarget, 0, len(targets))
+	for _, t := range targets {
+		networkTargets = append(networkTargets, net.ResolveTarget(t))
+	}
+
 	recordChan := make(chan types.Record, len(targets))
 	stopChan := make(chan bool, 2)
 
-	for idx, target := range targets {
+	for idx, target := range networkTargets {
 		header := types.RecordHeader{
 			ID:     idx,
 			Target: target,

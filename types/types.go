@@ -1,11 +1,15 @@
 package types
 
-import "time"
+import (
+	"time"
+
+	"github.com/yittg/ving/net"
+)
 
 // RecordHeader describes meta info of a record
 type RecordHeader struct {
 	ID     int
-	Target string
+	Target *net.NetworkTarget
 	Rounds int
 }
 

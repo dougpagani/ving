@@ -190,13 +190,12 @@ func (p *Ping) send(ipAddr *net.IPAddr, c *connSource) (*time.Time, *session, er
 }
 
 // PingOnce to target with address as `addr`
-func (p *Ping) PingOnce(addr string, timeout time.Duration) (time.Duration, error) {
-	ipAddr, err := net.ResolveIPAddr("ip", addr)
-	if err != nil {
-		return 0, err
+func (p *Ping) PingOnce(target *NetworkTarget, timeout time.Duration) (time.Duration, error) {
+	if target.Typ != IP {
+		return 0, fmt.Errorf("unsupported network type, %v", target.Typ)
 	}
 
-	return p.doPing(ipAddr, timeout)
+	return p.doPing(target.Target.(*net.IPAddr), timeout)
 }
 
 func (p *Ping) finishSession(s *session) {

@@ -45,6 +45,8 @@ type statistic struct {
 	lastNIterErrCount int
 	lastNIterCost     int64
 
+	dead bool
+
 	block *termui.Sparkline
 	group *termui.Sparklines
 }
@@ -150,17 +152,22 @@ func (c *Console) renderSp(iter uint64) {
 		}
 
 		var flag string
-		rate := s.lastErrRate()
-		if rate < 0.01 {
-			flag = "🐸"
-		} else if rate < 0.1 {
-			flag = "🦁"
+		if s.dead {
+			flag = "❌"
 		} else {
-			flag = "🙈"
+			rate := s.lastErrRate()
+			if rate < 0.01 {
+				flag = "🐸"
+			} else if rate < 0.1 {
+				flag = "🦁"
+			} else {
+				flag = "🙈"
+			}
+			if s.lastAverageCost() < int64(5*time.Millisecond) {
+				flag += " ⚡️"
+			}
 		}
-		if s.lastAverageCost() < int64(5*time.Millisecond) {
-			flag += " ⚡️"
-		}
+
 		title := fmt.Sprintf("%s %s", flag, s.title)
 
 		res := fmt.Sprintf("%v #%d[#%d]", view, s.total, s.errCount)
@@ -203,7 +210,7 @@ func (c *Console) getStatistic(header types.RecordHeader) *statistic {
 		group, block := c.allocatedBlock(header.ID)
 		target = &statistic{
 			id:    header.ID,
-			title: header.Target,
+			title: header.Target.Raw,
 			total: header.Rounds,
 			block: block,
 			group: group,
@@ -236,6 +243,9 @@ func (c *Console) handleRes(iter uint64, record types.Record) {
 		s.lastErr = record.ErrMsg
 		s.lastErrIter = iter
 		s.cost = append(s.cost[1:], 0)
+		if record.IsFatal {
+			s.dead = true
+		}
 	}
 }
 
@@ -284,6 +294,9 @@ func (c *Console) Run(recordChan chan types.Record, onExit func()) {
 		t := e.Data.(termui.EvtTimer)
 
 		for _, s := range c.statistics {
+			if s.dead {
+				continue
+			}
 			for i := 0; i < len(s.lastNIterRecord); i++ {
 				record := s.lastNIterRecord[i]
 				if record.iter+errStatisticWindow < t.Count {
