@@ -20,6 +20,8 @@ for example: %s 127.0.0.1 192.168.0.1
 type option struct {
 	interval time.Duration
 	timeout  time.Duration
+
+	gateway bool
 }
 
 func (o *option) isValid() bool {
@@ -32,6 +34,7 @@ func parseOptions() *option {
 	opt := option{}
 	flag.DurationVar(&opt.interval, "i", time.Second, "ping interval, must >=10ms")
 	flag.DurationVar(&opt.timeout, "t", time.Second, "ping timeout, must >=10ms")
+	flag.BoolVar(&opt.gateway, "g", false, "ping gateway");
 	flag.Parse()
 	if !opt.isValid() {
 		flag.Usage()

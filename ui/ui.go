@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gizak/termui"
+	"github.com/yittg/ving/net"
 	"github.com/yittg/ving/statistic"
 	"github.com/yittg/ving/types"
 )
@@ -37,7 +38,7 @@ type renderUnit struct {
 }
 
 // NewConsole init console
-func NewConsole(targets []string) *Console {
+func NewConsole(targets []*net.NetworkTarget) *Console {
 	nTargets := len(targets)
 	chartColumn := 1
 	chartRow := (nTargets + chartColumn - 1) / chartColumn
@@ -47,7 +48,7 @@ func NewConsole(targets []string) *Console {
 	for i, target := range targets {
 		sp := termui.Sparkline{}
 		sp.Height = chartHeight
-		sp.Title = target
+		sp.Title = target.Raw
 		sp.LineColor = termui.Attribute((color+i)%(termui.NumberofColors-2) + 2)
 		sp.TitleColor = termui.ColorWhite
 		sparkLines = append(sparkLines, sp)

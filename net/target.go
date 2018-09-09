@@ -1,6 +1,10 @@
 package net
 
-import "net"
+import (
+	_net "net"
+
+	"github.com/jackpal/gateway"
+)
 
 // NetworkTarget represents network target resolved
 type NetworkTarget struct {
@@ -23,7 +27,7 @@ func ResolveTarget(target string) *NetworkTarget {
 }
 
 func resolveIPTarget(address string) (*NetworkTarget, error) {
-	ipAddr, err := net.ResolveIPAddr("ip", address)
+	ipAddr, err := _net.ResolveIPAddr("ip", address)
 	if err != nil {
 		return nil, err
 	}
@@ -32,4 +36,21 @@ func resolveIPTarget(address string) (*NetworkTarget, error) {
 		Raw:    address,
 		Target: ipAddr,
 	}, nil
+}
+
+// DiscoverGatewayTarget discover and build gateway target
+func DiscoverGatewayTarget() *NetworkTarget {
+	ip, err := gateway.DiscoverGateway()
+	if err != nil {
+		return &NetworkTarget{
+			Typ:    Unknown,
+			Raw:    "gateway",
+			Target: err,
+		}
+	}
+	return &NetworkTarget{
+		Typ:    IP,
+		Raw:    ip.String() + "(G)",
+		Target: &_net.IPAddr{IP: ip},
+	}
 }

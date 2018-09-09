@@ -60,22 +60,25 @@ func pingTarget(
 func main() {
 	opt := parseOptions()
 	targets := flag.Args()
-	if len(targets) == 0 {
-		flag.Usage()
+	networkTargets := make([]*net.NetworkTarget, 0, len(targets))
+	for _, t := range targets {
+		networkTargets = append(networkTargets, net.ResolveTarget(t))
+	}
+	if opt.gateway {
+		networkTargets = append(networkTargets, net.DiscoverGatewayTarget())
+	}
+	if len(networkTargets) == 0 {
+		printUsage()
 		os.Exit(1)
 	}
+
 	ping := net.NewPing()
 	if err := ping.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "start ping error, %v", err)
 		os.Exit(2)
 	}
 
-	networkTargets := make([]*net.NetworkTarget, 0, len(targets))
-	for _, t := range targets {
-		networkTargets = append(networkTargets, net.ResolveTarget(t))
-	}
-
-	recordChan := make(chan types.Record, len(targets))
+	recordChan := make(chan types.Record, len(networkTargets))
 	stopChan := make(chan bool, 2)
 
 	for idx, target := range networkTargets {
@@ -86,7 +89,7 @@ func main() {
 		go pingTarget(ping, opt, header, recordChan, stopChan)
 	}
 
-	console := ui.NewConsole(targets)
+	console := ui.NewConsole(networkTargets)
 	console.Run(recordChan, func() {
 		close(stopChan)
 		ping.Stop()
