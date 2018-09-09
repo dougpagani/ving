@@ -32,6 +32,7 @@ func (s *Detail) DealRecord(iter uint64, record types.Record) {
 		Iter:   iter,
 		Record: record,
 	})
+	s.Total = record.Rounds
 
 	if record.Successful {
 		s.lastNIterCost += int64(record.Cost)
