@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -58,8 +57,8 @@ func pingTarget(
 }
 
 func main() {
-	opt := parseOptions()
-	targets := flag.Args()
+	opt := option{}
+	targets := parseCommandLine(&opt)
 	networkTargets := make([]*net.NetworkTarget, 0, len(targets))
 	for _, t := range targets {
 		networkTargets = append(networkTargets, net.ResolveTarget(t))
@@ -86,7 +85,7 @@ func main() {
 			ID:     idx,
 			Target: target,
 		}
-		go pingTarget(ping, opt, header, recordChan, stopChan)
+		go pingTarget(ping, &opt, header, recordChan, stopChan)
 	}
 
 	console := ui.NewConsole(networkTargets)
