@@ -2,12 +2,13 @@ package statistic
 
 import (
 	"math"
+	"time"
 
 	"github.com/yittg/ving/types"
 )
 
 const (
-	errStatisticWindow = 1000
+	errStatisticWindow = 10 * time.Second
 )
 
 // Detail provide ability for statistic
@@ -19,17 +20,17 @@ type Detail struct {
 	ErrCount          int
 	Cost              []int
 	Dead              bool
-	lastErrRecord     *ErrorRecordWithIter
+	lastErrRecord     *ErrorRecordAt
 	lastErrIter       uint64
-	lastNIterRecord   []RecordWithIter
+	lastNIterRecord   []RecordAt
 	lastNIterErrCount int
 	lastNIterCost     int64
 }
 
-// DealRecord deal new record at iter
-func (s *Detail) DealRecord(iter uint64, record types.Record) {
-	s.lastNIterRecord = append(s.lastNIterRecord, RecordWithIter{
-		Iter:   iter,
+// DealRecord deal new record at t
+func (s *Detail) DealRecord(t time.Time, record types.Record) {
+	s.lastNIterRecord = append(s.lastNIterRecord, RecordAt{
+		T:      t,
 		Record: record,
 	})
 	s.Total = record.Rounds
@@ -40,9 +41,9 @@ func (s *Detail) DealRecord(iter uint64, record types.Record) {
 	} else {
 		s.ErrCount++
 		s.lastNIterErrCount++
-		s.lastErrRecord = &ErrorRecordWithIter{
-			Iter: iter,
-			Err:  record.ErrMsg,
+		s.lastErrRecord = &ErrorRecordAt{
+			T:   t,
+			Err: record.ErrMsg,
 		}
 		s.Cost = append(s.Cost[1:], 0)
 		if record.IsFatal {
@@ -52,10 +53,10 @@ func (s *Detail) DealRecord(iter uint64, record types.Record) {
 }
 
 // RetireRecord retires those records out of window
-func (s *Detail) RetireRecord(iter uint64) {
+func (s *Detail) RetireRecord(t time.Time) {
 	for i := 0; i < len(s.lastNIterRecord); i++ {
 		record := s.lastNIterRecord[i]
-		if record.Iter+errStatisticWindow < iter {
+		if record.T.Add(errStatisticWindow).Before(t) {
 			if !record.Record.Successful {
 				s.lastNIterErrCount--
 			} else {
@@ -69,7 +70,7 @@ func (s *Detail) RetireRecord(iter uint64) {
 }
 
 // LastRecord represents latest record
-func (s *Detail) LastRecord() *RecordWithIter {
+func (s *Detail) LastRecord() *RecordAt {
 	n := len(s.lastNIterRecord)
 	if n == 0 {
 		return nil
@@ -78,7 +79,7 @@ func (s *Detail) LastRecord() *RecordWithIter {
 }
 
 // LastErrorRecord represents latest error record
-func (s *Detail) LastErrorRecord() *ErrorRecordWithIter {
+func (s *Detail) LastErrorRecord() *ErrorRecordAt {
 	return s.lastErrRecord
 }
 
@@ -111,22 +112,22 @@ func (s *Detail) ResizeViewWindow(size int) {
 	}
 }
 
-// RecordWithIter represents Record generated of the iteration
-type RecordWithIter struct {
-	Iter   uint64
+// RecordAt represents Record generated of the iteration
+type RecordAt struct {
+	T      time.Time
 	Record types.Record
 }
 
 // View of record
-func (r *RecordWithIter) View() interface{} {
+func (r *RecordAt) View() interface{} {
 	if !r.Record.Successful {
 		return "Err"
 	}
 	return r.Record.Cost
 }
 
-// ErrorRecordWithIter error record
-type ErrorRecordWithIter struct {
-	Iter uint64
-	Err  string
+// ErrorRecordAt error record
+type ErrorRecordAt struct {
+	T   time.Time
+	Err string
 }

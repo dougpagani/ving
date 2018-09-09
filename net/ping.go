@@ -45,10 +45,10 @@ type session struct {
 }
 
 // NewPing new a ping
-func NewPing() *Ping {
+func NewPing(stopChan chan bool) *Ping {
 	return &Ping{
 		bus:      make(chan *packet, 256),
-		stopping: make(chan bool),
+		stopping: stopChan,
 		sessions: sync.Map{},
 	}
 }
@@ -72,19 +72,15 @@ func (p *Ping) Start() (err error) {
 	}
 	p.connV6 = &connSource{c: c, proto: 58}
 
-	p.stop.Add(1)
+	p.stop.Add(3)
 	go p.consumeBus()
-	func() {
-		p.stop.Add(2)
-		go p.readFrom(p.conn)
-		go p.readFrom(p.connV6)
-	}()
+	go p.readFrom(p.conn)
+	go p.readFrom(p.connV6)
+	go p.wait()
 	return nil
 }
 
-// Stop listen and receive
-func (p *Ping) Stop() {
-	close(p.stopping)
+func (p *Ping) wait() {
 	p.stop.Wait()
 
 	p.conn.close()

@@ -90,16 +90,16 @@ func (c *Console) resizeSpGroup() {
 	}
 }
 
-func (c *Console) retireRecord(iter uint64) {
+func (c *Console) retireRecord(t time.Time) {
 	for _, ru := range c.renderUnits {
 		if ru.statistic.Dead {
 			continue
 		}
-		ru.statistic.RetireRecord(iter)
+		ru.statistic.RetireRecord(t)
 	}
 }
 
-func (c *Console) renderSp(iter uint64) {
+func (c *Console) renderSp(t time.Time) {
 	for _, ru := range c.renderUnits {
 		s := ru.statistic
 		lastRecord := s.LastRecord()
@@ -135,7 +135,7 @@ func (c *Console) renderSp(iter uint64) {
 	}
 }
 
-func (c *Console) renderErr(iter uint64) {
+func (c *Console) renderErr(t time.Time) {
 	display := make([]string, 0, len(c.renderUnits))
 	for i := 0; i < c.nItem; i++ {
 		ru, ok := c.renderUnits[i]
@@ -149,7 +149,7 @@ func (c *Console) renderErr(iter uint64) {
 		}
 		title := fmt.Sprintf("* %s:%s", s.Title, lastErr.Err)
 		format := "%s"
-		if lastErr.Iter+errHighlightWindow >= iter {
+		if lastErr.T.Add(errHighlightWindow).After(t) {
 			format = "[%s](fg-red)"
 		}
 		display = append(display, fmt.Sprintf(format, title))
@@ -160,9 +160,9 @@ func (c *Console) renderErr(iter uint64) {
 	c.errGroup.Items = display
 }
 
-func (c *Console) render(iter uint64) {
-	c.renderSp(iter)
-	c.renderErr(iter)
+func (c *Console) render(t time.Time) {
+	c.renderSp(t)
+	c.renderErr(t)
 }
 
 func (c *Console) getRenderUnit(header types.RecordHeader) *renderUnit {
@@ -205,7 +205,7 @@ func (c *Console) allocatedBlock(idx int) (*termui.Sparklines, *termui.Sparkline
 }
 
 // Run a spark line ui
-func (c *Console) Run(recordChan chan types.Record, onExit func()) {
+func (c *Console) Run(recordChan chan types.Record, stopChan chan bool) {
 	if err := termui.Init(); err != nil {
 		panic(err)
 	}
@@ -224,35 +224,31 @@ func (c *Console) Run(recordChan chan types.Record, onExit func()) {
 	)
 	termui.Body.Align()
 
-	termui.DefaultEvtStream.Merge("timer", termui.NewTimerCh(c.loopPeriodic))
-	termui.Handle(fmt.Sprintf("/timer/%v", c.loopPeriodic), func(e termui.Event) {
-		t := e.Data.(termui.EvtTimer)
-		c.retireRecord(t.Count)
-
-		for {
-			select {
-			case res := <-recordChan:
-				ru := c.getRenderUnit(res.RecordHeader)
-				ru.statistic.DealRecord(t.Count, res)
-			default:
-				c.render(t.Count)
-				termui.Render(termui.Body)
-				return
-			}
+	go func() {
+		ticker := time.NewTicker(c.loopPeriodic)
+		for t := range ticker.C {
+			func() {
+				c.retireRecord(t)
+				for {
+					select {
+					case res := <-recordChan:
+						ru := c.getRenderUnit(res.RecordHeader)
+						ru.statistic.DealRecord(t, res)
+					default:
+						c.render(t)
+						termui.Render(termui.Body)
+						return
+					}
+				}
+			}()
 		}
-	})
+	}()
 
-	stop := func() {
-		onExit()
+	termui.Handle("q", "<C-c>", func(termui.Event) {
+		close(stopChan)
 		termui.StopLoop()
-	}
-	termui.Handle("/sys/kbd/q", func(termui.Event) {
-		stop()
 	})
-	termui.Handle("/sys/kbd/C-c", func(termui.Event) {
-		stop()
-	})
-	termui.Handle("/sys/wnd/resize", func(termui.Event) {
+	termui.Handle("<Resize>", func(termui.Event) {
 		termui.Body.Width = termui.TermWidth()
 		termui.Body.Align()
 		termui.Clear()

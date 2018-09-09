@@ -72,14 +72,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	ping := net.NewPing()
+	recordChan := make(chan types.Record, len(networkTargets))
+	stopChan := make(chan bool, 2)
+
+	ping := net.NewPing(stopChan)
 	if err := ping.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "start ping error, %v", err)
 		os.Exit(2)
 	}
-
-	recordChan := make(chan types.Record, len(networkTargets))
-	stopChan := make(chan bool, 2)
 
 	for idx, target := range networkTargets {
 		header := types.RecordHeader{
@@ -90,8 +90,5 @@ func main() {
 	}
 
 	console := ui.NewConsole(networkTargets)
-	console.Run(recordChan, func() {
-		close(stopChan)
-		ping.Stop()
-	})
+	console.Run(recordChan, stopChan)
 }
