@@ -21,7 +21,6 @@ type Detail struct {
 	Cost              []int
 	Dead              bool
 	lastErrRecord     *ErrorRecordAt
-	lastErrIter       uint64
 	lastNIterRecord   []RecordAt
 	lastNIterErrCount int
 	lastNIterCost     int64
