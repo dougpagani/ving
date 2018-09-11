@@ -22,6 +22,8 @@ type option struct {
 	timeout  time.Duration
 
 	gateway bool
+
+	showVersion bool
 }
 
 func (o *option) isValid() bool {
@@ -34,7 +36,14 @@ func parseCommandLine(opt *option) []string {
 	flag.DurationVarP(&opt.interval, "interval", "i", time.Second, "ping interval, must >=10ms")
 	flag.DurationVarP(&opt.timeout, "timeout", "t", time.Second, "ping timeout, must >=10ms")
 	flag.BoolVarP(&opt.gateway, "gateway", "g", false, "ping gateway");
+	flag.BoolVarP(&opt.showVersion, "version", "v", false, "display the version")
 	flag.Parse()
+
+	if opt.showVersion {
+		printVersion()
+		os.Exit(0)
+	}
+
 	if !opt.isValid() {
 		flag.Usage()
 		os.Exit(1)

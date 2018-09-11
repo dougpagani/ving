@@ -78,7 +78,7 @@ func main() {
 
 	ping := net.NewPing(stopChan)
 	if err := ping.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "start ping error, %v", err)
+		fmt.Fprintf(os.Stderr, "start ping error, %v\n", err)
 		os.Exit(2)
 	}
 
