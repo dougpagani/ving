@@ -61,12 +61,12 @@ func newSession() *session {
 
 // Start listen
 func (p *IPing) Start() (err error) {
-	c, err := icmp.ListenPacket("udp4", "")
+	c, err := icmp.ListenPacket(networkType["ipv4"], "")
 	if err != nil {
 		return
 	}
 	p.conn = &connSource{c: c, proto: 1}
-	c, err = icmp.ListenPacket("udp6", "")
+	c, err = icmp.ListenPacket(networkType["ipv6"], "")
 	if err != nil {
 		return
 	}
@@ -165,7 +165,6 @@ func (p *IPing) send(ipAddr *net.IPAddr, c *connSource) (*time.Time, *session, e
 			break
 		}
 	}
-	dst := &net.UDPAddr{IP: ipAddr.IP, Zone: ipAddr.Zone}
 	bytes, err := (&icmp.Message{
 		Type: typ,
 		Code: 0,
@@ -180,7 +179,7 @@ func (p *IPing) send(ipAddr *net.IPAddr, c *connSource) (*time.Time, *session, e
 	}
 
 	t := time.Now()
-	if _, err := c.c.WriteTo(bytes, dst); err != nil {
+	if _, err := c.c.WriteTo(bytes, p.buildDst(ipAddr)); err != nil {
 		return nil, nil, err
 	}
 	return &t, s, nil
