@@ -19,6 +19,15 @@ Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 $ go get -u github.com/yittg/ving
 ```
 
+## notes
+
+* for linux users, run `ving` with `sudo` or `setcap` in advance, 
+for more information, see the [man page](http://linux.die.net/man/7/capabilities).
+
+    ```
+    $ sudo setcap "cap_net_raw+ep" ving
+    ``` 
+
 # ⚡ Usage
 
 ```
