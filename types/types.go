@@ -3,13 +3,13 @@ package types
 import (
 	"time"
 
-	"github.com/yittg/ving/net"
+	"github.com/yittg/ving/net/protocol"
 )
 
 // RecordHeader describes meta info of a record
 type RecordHeader struct {
 	ID     int
-	Target *net.NetworkTarget
+	Target *protocol.NetworkTarget
 	Rounds int
 }
 

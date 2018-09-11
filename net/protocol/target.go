@@ -1,7 +1,7 @@
-package net
+package protocol
 
 import (
-	_net "net"
+	"net"
 
 	"github.com/jackpal/gateway"
 )
@@ -27,7 +27,7 @@ func ResolveTarget(target string) *NetworkTarget {
 }
 
 func resolveIPTarget(address string) (*NetworkTarget, error) {
-	ipAddr, err := _net.ResolveIPAddr("ip", address)
+	ipAddr, err := net.ResolveIPAddr("ip", address)
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +51,6 @@ func DiscoverGatewayTarget() *NetworkTarget {
 	return &NetworkTarget{
 		Typ:    IP,
 		Raw:    ip.String() + "(G)",
-		Target: &_net.IPAddr{IP: ip},
+		Target: &net.IPAddr{IP: ip},
 	}
 }

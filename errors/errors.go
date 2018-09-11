@@ -1,4 +1,4 @@
-package net
+package errors
 
 // ErrTimeout for ping timeout error
 type ErrTimeout struct {

@@ -5,19 +5,21 @@ import (
 	"os"
 	"time"
 
+	"github.com/yittg/ving/errors"
 	"github.com/yittg/ving/net"
+	"github.com/yittg/ving/net/protocol"
 	"github.com/yittg/ving/types"
 	"github.com/yittg/ving/ui"
 )
 
 func pingTarget(
-	ping *net.Ping,
+	ping *net.NPing,
 	opt *option,
 	header types.RecordHeader,
 	recordChan chan types.Record,
 	stopChan chan bool,
 ) {
-	if header.Target.Typ == net.Unknown {
+	if header.Target.Typ == protocol.Unknown {
 		recordChan <- types.Record{
 			RecordHeader: header,
 			Successful:   false,
@@ -35,7 +37,7 @@ func pingTarget(
 			duration, e := ping.PingOnce(header.Target, opt.timeout)
 			header.Rounds++
 			if e != nil {
-				_, isTimeout := e.(*net.ErrTimeout)
+				_, isTimeout := e.(*errors.ErrTimeout)
 				recordChan <- types.Record{
 					RecordHeader: header,
 					Successful:   false,
@@ -59,12 +61,12 @@ func pingTarget(
 func main() {
 	opt := option{}
 	targets := parseCommandLine(&opt)
-	networkTargets := make([]*net.NetworkTarget, 0, len(targets))
+	networkTargets := make([]*protocol.NetworkTarget, 0, len(targets))
 	for _, t := range targets {
-		networkTargets = append(networkTargets, net.ResolveTarget(t))
+		networkTargets = append(networkTargets, protocol.ResolveTarget(t))
 	}
 	if opt.gateway {
-		networkTargets = append(networkTargets, net.DiscoverGatewayTarget())
+		networkTargets = append(networkTargets, protocol.DiscoverGatewayTarget())
 	}
 	if len(networkTargets) == 0 {
 		printUsage()

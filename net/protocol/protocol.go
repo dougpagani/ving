@@ -1,4 +1,4 @@
-package net
+package protocol
 
 // TargetType represent the type in network
 type TargetType int

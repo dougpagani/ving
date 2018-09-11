@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gizak/termui"
-	"github.com/yittg/ving/net"
+	"github.com/yittg/ving/net/protocol"
 	"github.com/yittg/ving/statistic"
 	"github.com/yittg/ving/types"
 )
@@ -38,7 +38,7 @@ type renderUnit struct {
 }
 
 // NewConsole init console
-func NewConsole(targets []*net.NetworkTarget) *Console {
+func NewConsole(targets []*protocol.NetworkTarget) *Console {
 	nTargets := len(targets)
 	chartColumn := 1
 	chartRow := (nTargets + chartColumn - 1) / chartColumn
