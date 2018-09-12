@@ -79,15 +79,6 @@ func (c *Console) resizeSpGroup() {
 	}
 }
 
-func (c *Console) retireRecord(t time.Time) {
-	for _, ru := range c.renderUnits {
-		if ru.statistic.Dead {
-			continue
-		}
-		ru.statistic.RetireRecord(t)
-	}
-}
-
 func (c *Console) renderSp(t time.Time) {
 	for _, ru := range c.renderUnits {
 		if ru == nil {
