@@ -6,29 +6,23 @@ import (
 	"time"
 
 	"github.com/gizak/termui"
-	"github.com/yittg/ving/net/protocol"
 	"github.com/yittg/ving/statistic"
 	"github.com/yittg/ving/types"
 )
 
 const (
-	defaultLoopPeriodic = time.Millisecond * 10
-	errHighlightWindow  = 50
-
 	chartHeight = 3
 )
 
 // Console display
 type Console struct {
 	nItem       int
-	renderUnits map[int]*renderUnit
+	renderUnits []*renderUnit
+	colors      map[int]termui.Attribute
 
 	chartColumnN int
 	chartRowN    int
 	spGroup      []*termui.Sparklines
-	errGroup     *termui.List
-
-	loopPeriodic time.Duration
 }
 
 type renderUnit struct {
@@ -38,18 +32,18 @@ type renderUnit struct {
 }
 
 // NewConsole init console
-func NewConsole(targets []*protocol.NetworkTarget) *Console {
-	nTargets := len(targets)
+func NewConsole(nTargets int) *Console {
 	chartColumn := 1
 	chartRow := (nTargets + chartColumn - 1) / chartColumn
 	sparkLines := make([]termui.Sparkline, 0, nTargets)
 	rand.Seed(time.Now().Unix())
 	color := rand.Intn(termui.NumberofColors - 2)
-	for i, target := range targets {
+	colors := make(map[int]termui.Attribute, nTargets)
+	for i := 0; i < nTargets; i++ {
+		colors[i] = termui.Attribute((color+i)%(termui.NumberofColors-2) + 2)
 		sp := termui.Sparkline{}
 		sp.Height = chartHeight
-		sp.Title = target.Raw
-		sp.LineColor = termui.Attribute((color+i)%(termui.NumberofColors-2) + 2)
+		sp.Title = "*"
 		sp.TitleColor = termui.ColorWhite
 		sparkLines = append(sparkLines, sp)
 	}
@@ -69,18 +63,13 @@ func NewConsole(targets []*protocol.NetworkTarget) *Console {
 		groups = append(groups, g)
 	}
 
-	errGroup := termui.NewList()
-	errGroup.Border = false
-	errGroup.Height = 2
-
 	return &Console{
 		spGroup:      groups,
-		errGroup:     errGroup,
 		nItem:        nTargets,
 		chartColumnN: chartColumn,
 		chartRowN:    chartRow,
-		renderUnits:  make(map[int]*renderUnit, nTargets),
-		loopPeriodic: defaultLoopPeriodic,
+		colors:       colors,
+		renderUnits:  make([]*renderUnit, nTargets),
 	}
 }
 
@@ -101,7 +90,13 @@ func (c *Console) retireRecord(t time.Time) {
 
 func (c *Console) renderSp(t time.Time) {
 	for _, ru := range c.renderUnits {
+		if ru == nil {
+			continue
+		}
 		s := ru.statistic
+		if s == nil {
+			continue
+		}
 		lastRecord := s.LastRecord()
 		if lastRecord == nil {
 			continue
@@ -135,65 +130,30 @@ func (c *Console) renderSp(t time.Time) {
 	}
 }
 
-func (c *Console) renderErr(t time.Time) {
-	display := make([]string, 0, len(c.renderUnits))
-	for i := 0; i < c.nItem; i++ {
-		ru, ok := c.renderUnits[i]
-		if !ok {
-			continue
+// Render statistics
+func (c *Console) Render(t time.Time, sts []*statistic.Detail) {
+	for i, st := range sts {
+		if c.renderUnits[i] == nil {
+			sparklines, sparkline := c.allocatedBlock(i)
+			c.renderUnits[i] = &renderUnit{
+				statistic: st,
+				group:     sparklines,
+				block:     sparkline,
+			}
+		} else {
+			c.renderUnits[i].statistic = st
 		}
-		s := ru.statistic
-		lastErr := s.LastErrorRecord()
-		if lastErr == nil {
-			continue
-		}
-		title := fmt.Sprintf("* %s:%s", s.Title, lastErr.Err)
-		format := "%s"
-		if lastErr.T.Add(errHighlightWindow).After(t) {
-			format = "[%s](fg-red)"
-		}
-		display = append(display, fmt.Sprintf(format, title))
+		c.renderUnits[i].block.LineColor = c.colors[st.ID]
+		st.ResizeViewWindow(c.dataLen(c.renderUnits[i]))
 	}
-	if c.errGroup.Height < len(display) {
-		c.errGroup.Height = len(display)
-	}
-	c.errGroup.Items = display
-}
 
-func (c *Console) render(t time.Time) {
 	c.renderSp(t)
-	c.renderErr(t)
-}
 
-func (c *Console) getRenderUnit(header types.RecordHeader) *renderUnit {
-	target, ok := c.renderUnits[header.ID]
-	if !ok {
-		group, block := c.allocatedBlock(header.ID)
-		target = &renderUnit{
-			statistic: &statistic.Detail{
-				ID:    header.ID,
-				Title: header.Target.Raw,
-				Total: header.Rounds,
-			},
-			block: block,
-			group: group,
-		}
-		target.statistic.ResizeViewWindow(c.dataLen(target))
-		c.renderUnits[header.ID] = target
-	}
-	return target
-}
-
-func (c *Console) width() int {
-	return termui.Body.Width
+	termui.Render(termui.Body)
 }
 
 func (c *Console) dataLen(ru *renderUnit) int {
 	return ru.group.Width - 1
-}
-
-func (c *Console) errTextLen() int {
-	return c.width() - 1
 }
 
 func (c *Console) allocatedBlock(idx int) (*termui.Sparklines, *termui.Sparkline) {
@@ -218,31 +178,8 @@ func (c *Console) Run(recordChan chan types.Record, stopChan chan bool) {
 
 	termui.Body.AddRows(
 		termui.NewRow(groupCols...),
-		termui.NewRow(
-			termui.NewCol(12, 0, c.errGroup),
-		),
 	)
 	termui.Body.Align()
-
-	go func() {
-		ticker := time.NewTicker(c.loopPeriodic)
-		for t := range ticker.C {
-			func() {
-				c.retireRecord(t)
-				for {
-					select {
-					case res := <-recordChan:
-						ru := c.getRenderUnit(res.RecordHeader)
-						ru.statistic.DealRecord(t, res)
-					default:
-						c.render(t)
-						termui.Render(termui.Body)
-						return
-					}
-				}
-			}()
-		}
-	}()
 
 	termui.Handle("q", "<C-c>", func(termui.Event) {
 		close(stopChan)
