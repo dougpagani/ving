@@ -8,9 +8,9 @@ Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 # 🦁 Features
 
 * ping multiple targets concurrently and independently;
+* error rate and lantency statistics in sliding window, as emoji;
+* sort by error rate and latency statistic, `--sort`;
 * ping gateway conveniently, `-g`;
-* ping interval option, `-i`;
-* error rate and speed statistics in sliding window, as emoji;
 * responsive terminal display (based on termui).
 
 # 🙈 Install
