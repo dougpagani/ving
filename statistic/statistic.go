@@ -2,6 +2,7 @@ package statistic
 
 import (
 	"math"
+	"strings"
 	"time"
 
 	"github.com/yittg/ving/types"
@@ -120,9 +121,18 @@ type RecordAt struct {
 // View of record
 func (r *RecordAt) View() interface{} {
 	if !r.Record.Successful {
-		return "Err"
+		errMsg := strings.Split(r.Record.ErrMsg, ":")
+		return errMsg[len(errMsg)-1]
 	}
-	return r.Record.Cost
+	v := r.Record.Cost
+	if v > time.Second {
+		v = v.Truncate(10 * time.Millisecond)
+	} else if v > time.Millisecond {
+		v = v.Truncate(10 * time.Microsecond)
+	} else {
+		v = v.Truncate(10 * time.Nanosecond)
+	}
+	return v
 }
 
 // ErrorRecordAt error record
