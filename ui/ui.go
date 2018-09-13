@@ -117,6 +117,11 @@ func (c *Console) renderSp(t time.Time) {
 		format := fmt.Sprintf("%%-%ds%%%dv", textLen/2, textLen-textLen/2-1)
 		ru.block.Title = fmt.Sprintf(format, title, res)
 		ru.block.Data = s.Cost
+		if s.Dead {
+			ru.block.Height = 0
+		} else {
+			ru.block.Height = chartHeight
+		}
 	}
 }
 
