@@ -39,7 +39,7 @@ func ParseCommandLine(opt *Option) []string {
 	flag.Usage = printUsage
 	flag.DurationVarP(&opt.Interval, "interval", "i", time.Second, "ping interval, must >=10ms")
 	flag.DurationVarP(&opt.Timeout, "timeout", "t", time.Second, "ping timeout, must >=10ms")
-	flag.BoolVarP(&opt.Gateway, "gateway", "g", false, "ping gateway");
+	flag.BoolVarP(&opt.Gateway, "gateway", "g", false, "ping gateway")
 	flag.BoolVarP(&opt.Sort, "sort", "", false, "sort by statistic")
 	flag.BoolVarP(&opt.ShowVersion, "version", "v", false, "display the version")
 	flag.Parse()

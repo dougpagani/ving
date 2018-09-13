@@ -10,7 +10,6 @@ func (*ErrTimeout) Error() string {
 
 // ErrNoTarget represents wrong usage
 type ErrNoTarget struct {
-
 }
 
 func (*ErrNoTarget) Error() string {

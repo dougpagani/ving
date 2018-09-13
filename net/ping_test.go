@@ -27,11 +27,11 @@ func Test(t *testing.T) {
 		wg.Add(1)
 		go func(t *protocol.NetworkTarget) {
 			defer wg.Done()
-			duration, err := p.PingOnce(t, time.Second)
+			rtt, err := p.PingOnce(t, time.Second)
 			if err != nil {
 				fmt.Printf("ping %s error, %v\n", t.Raw, err)
 			} else {
-				fmt.Printf("ping %s ttl = %v\n", t.Raw, duration)
+				fmt.Printf("ping %s rtt = %v\n", t.Raw, rtt)
 			}
 		}(target)
 	}

@@ -80,7 +80,7 @@ func (e *Engine) Run() {
 		go e.pingTarget(header)
 	}
 	go e.dealRecords()
-	e.console.Run(e.records, e.stop)
+	e.console.Run(e.stop)
 }
 
 func (e *Engine) pingTarget(header types.RecordHeader) {

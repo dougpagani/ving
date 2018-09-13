@@ -7,7 +7,6 @@ import (
 
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/statistic"
-	"github.com/yittg/ving/types"
 )
 
 const (
@@ -156,7 +155,7 @@ func (c *Console) allocatedBlock(idx int) (*termui.Sparklines, *termui.Sparkline
 }
 
 // Run a spark line ui
-func (c *Console) Run(recordChan chan types.Record, stopChan chan bool) {
+func (c *Console) Run(stopChan chan bool) {
 	if err := termui.Init(); err != nil {
 		panic(err)
 	}
