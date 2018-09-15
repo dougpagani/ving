@@ -11,6 +11,7 @@ import (
 
 const (
 	chartHeight = 3
+	traceHeight = 8
 )
 
 // Console display
@@ -18,6 +19,9 @@ type Console struct {
 	nItem       int
 	renderUnits []*renderUnit
 	colors      map[int]termui.Attribute
+
+	traceOn   bool
+	traceUnit *traceUnit
 
 	chartColumnN int
 	chartRowN    int
@@ -28,6 +32,15 @@ type renderUnit struct {
 	statistic *statistic.Detail
 	block     *termui.Sparkline
 	group     *termui.Sparklines
+}
+
+type traceUnit struct {
+	selectID   int
+	selectChan chan int
+	statistic  *statistic.TraceSt
+	list       *termui.List
+	lc         *termui.LineChart
+	from       *termui.List
 }
 
 // NewConsole init console
@@ -79,6 +92,9 @@ func (c *Console) resizeSpGroup() {
 }
 
 func (c *Console) renderSp(t time.Time) {
+	for _, g := range c.spGroup {
+		g.Height = c.chartRowN*(chartHeight+1) + 1
+	}
 	for _, ru := range c.renderUnits {
 		if ru == nil {
 			continue
@@ -110,23 +126,53 @@ func (c *Console) renderSp(t time.Time) {
 		}
 
 		title := fmt.Sprintf("%s %s", flag, s.Title)
-
 		res := fmt.Sprintf("%v #%d[#%d]", lastRecord.View(), s.Total, s.ErrCount)
-
 		textLen := c.dataLen(ru)
 		format := fmt.Sprintf("%%-%ds%%%dv", textLen/2, textLen-textLen/2-1)
 		ru.block.Title = fmt.Sprintf(format, title, res)
 		ru.block.Data = s.Cost
 		if s.Dead {
 			ru.block.Height = 0
+			ru.group.Height -= chartHeight
 		} else {
 			ru.block.Height = chartHeight
 		}
 	}
 }
 
+func (c *Console) renderTraceUnit(sts []*statistic.Detail, ts *statistic.TraceSt) {
+	maxID := 0
+	for _, st := range sts {
+		if maxID < st.ID {
+			maxID = st.ID
+		}
+	}
+
+	items := make([]string, maxID+1)
+	for _, st := range sts {
+		items[st.ID] = st.Title
+	}
+	c.traceUnit.list.Items = items
+	if c.traceUnit.selectID >= len(c.traceUnit.list.Items) {
+		c.traceUnit.selectID = -1
+	}
+	if c.traceUnit.selectID >= 0 {
+		c.traceUnit.list.Items[c.traceUnit.selectID] =
+			fmt.Sprintf("[%s](bg-red)", c.traceUnit.list.Items[c.traceUnit.selectID])
+	}
+	c.traceUnit.statistic = ts
+	if ts != nil {
+		shift := len(ts.From) - c.traceUnit.from.Height + 2
+		if shift < 0 {
+			shift = 0
+		}
+		c.traceUnit.from.Items = ts.From[shift:]
+		c.traceUnit.lc.Data = map[string][]float64{"default": ts.Cost}
+	}
+}
+
 // Render statistics
-func (c *Console) Render(t time.Time, sts []*statistic.Detail) {
+func (c *Console) Render(t time.Time, sts []*statistic.Detail, ts *statistic.TraceSt) {
 	for i, st := range sts {
 		if c.renderUnits[i] == nil {
 			sparklines, sparkline := c.allocatedBlock(i)
@@ -144,7 +190,73 @@ func (c *Console) Render(t time.Time, sts []*statistic.Detail) {
 
 	c.renderSp(t)
 
+	if c.traceOn {
+		c.renderTraceUnit(sts, ts)
+	}
+
 	termui.Render(termui.Body)
+}
+
+// ToggleTrace hide trace block
+func (c *Console) ToggleTrace(t time.Time, selectChan chan int) bool {
+	if c.traceOn {
+		if len(termui.Body.Rows) > 1 {
+			termui.Body.Rows = termui.Body.Rows[:1]
+		}
+	} else {
+		if c.traceUnit == nil {
+			listL := termui.NewList()
+			listL.BorderTop = true
+			listL.BorderLeft = false
+			listL.BorderBottom = false
+			listL.BorderRight = false
+			listL.Height = traceHeight
+
+			lc := termui.NewLineChart()
+			lc.Height = traceHeight
+			lc.Mode = "dot"
+			lc.BorderTop = true
+			lc.BorderLeft = false
+			lc.BorderBottom = false
+			lc.BorderRight = false
+			lc.AxesColor = termui.ColorWhite
+			lc.BorderLabel = " ms "
+			lc.BorderLabelFg = termui.ColorWhite
+			lc.PaddingRight = 1
+			lc.LineColor["default"] = termui.ColorGreen | termui.AttrBold
+
+			listR := termui.NewList()
+			listR.BorderTop = true
+			listR.BorderLeft = false
+			listR.BorderBottom = false
+			listR.BorderRight = false
+			listR.Height = traceHeight
+			c.traceUnit = &traceUnit{
+				list: listL,
+				lc:   lc,
+				from: listR,
+			}
+		}
+		c.traceUnit.selectID = -1
+		c.traceUnit.selectChan = selectChan
+		c.traceUnit.from.Items = []string{}
+		c.traceUnit.lc.Data = map[string][]float64{}
+
+		traceRow := termui.NewRow(
+			termui.NewCol(3, 0, c.traceUnit.list),
+			termui.NewCol(6, 0, c.traceUnit.lc),
+			termui.NewCol(3, 0, c.traceUnit.from),
+		)
+		if len(termui.Body.Rows) == 1 {
+			termui.Body.AddRows(traceRow)
+		} else {
+			termui.Body.Rows[1] = traceRow
+		}
+	}
+	termui.Clear()
+	termui.Body.Align()
+	c.traceOn = !c.traceOn
+	return c.traceOn
 }
 
 func (c *Console) dataLen(ru *renderUnit) int {
@@ -160,7 +272,7 @@ func (c *Console) allocatedBlock(idx int) (*termui.Sparklines, *termui.Sparkline
 }
 
 // Run a spark line ui
-func (c *Console) Run(stopChan chan bool) {
+func (c *Console) Run(stopChan chan bool, handlers ...EventHandler) {
 	if err := termui.Init(); err != nil {
 		panic(err)
 	}
@@ -187,6 +299,41 @@ func (c *Console) Run(stopChan chan bool) {
 		c.resizeSpGroup()
 		termui.Render(termui.Body)
 	})
+	termui.Handle("<Up>", func(event termui.Event) {
+		if !c.traceOn {
+			return
+		}
+		if c.traceUnit.selectID < 0 {
+			c.traceUnit.selectID = 0
+		} else {
+			c.traceUnit.selectID = (c.traceUnit.selectID - 1 + len(c.traceUnit.list.Items)) % len(c.traceUnit.list.Items)
+		}
+	})
+	termui.Handle("<Down>", func(event termui.Event) {
+		if !c.traceOn {
+			return
+		}
+		c.traceUnit.selectID = (c.traceUnit.selectID + 1) % len(c.traceUnit.list.Items)
+	})
+
+	termui.Handle("<Enter>", func(event termui.Event) {
+		if !c.traceOn || c.traceUnit.selectID < 0 {
+			return
+		}
+		c.traceUnit.selectChan <- c.traceUnit.selectID
+	})
+
+	for _, handler := range handlers {
+		termui.Handle(handler.Key, func(termui.Event) {
+			handler.Handler()
+		})
+	}
 
 	termui.Loop()
+}
+
+// EventHandler for register handler for event key
+type EventHandler struct {
+	Key     string
+	Handler func()
 }

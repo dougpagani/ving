@@ -8,6 +8,8 @@ Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 # 🦁 Features
 
 * ping multiple targets concurrently and independently;
+* trace a target like a simple `tracerout`;
+    > toggle by tapping <kbd>t</kbd> and use <kbd>⬆</kbd> / <kbd>⬇</kbd> to choose then <kbd>enter</kbd>;
 * error rate and lantency statistics in sliding window, as emoji;
 * sort by error rate and latency statistic, `--sort`;
 * ping gateway conveniently, `-g`;
