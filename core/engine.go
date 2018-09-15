@@ -33,7 +33,13 @@ type Engine struct {
 	console *ui.Console
 
 	records chan types.Record
-	stop    chan bool
+
+	traceOn       bool
+	traceSelected chan int
+	traceRecords  chan types.Record
+	traceResult   *statistic.TraceSt
+
+	stop chan bool
 }
 
 // NewEngine new a engine instance
@@ -61,7 +67,12 @@ func NewEngine(opt *options.Option, targets []string) (*Engine, error) {
 		stSlice:   make([]*statistic.Detail, 0, nTargets),
 		console:   ui.NewConsole(nTargets),
 		records:   records,
-		stop:      stop,
+
+		traceOn:       false,
+		traceSelected: make(chan int, 1),
+		traceRecords:  make(chan types.Record, 10),
+
+		stop: stop,
 	}, nil
 }
 
@@ -79,8 +90,77 @@ func (e *Engine) Run() {
 		}
 		go e.pingTarget(header)
 	}
-	go e.dealRecords()
-	e.console.Run(e.stop)
+	go e.loop()
+	go e.traceTarget()
+	e.console.Run(e.stop, ui.EventHandler{
+		Key: "t",
+		Handler: func() {
+			e.traceOn = e.console.ToggleTrace(time.Now(), e.traceSelected)
+		},
+	})
+}
+
+func (e *Engine) traceTarget() {
+	ticker := time.NewTicker(time.Millisecond * 500)
+	var header *types.RecordHeader
+	ttl := 1
+	gap := 0 // display the final state for gap * ticker
+	for {
+		select {
+		case <-e.stop:
+			return
+		case selected := <-e.traceSelected:
+			header = &types.RecordHeader{
+				ID:     selected,
+				Target: e.targets[selected],
+			}
+			ttl = 1
+		case <-ticker.C:
+			if !e.traceOn {
+				header = nil
+				e.traceResult = nil
+			}
+			if gap > 0 {
+				gap--
+				continue
+			}
+			if e.traceOn && header != nil {
+				if latency, from, err := e.ping.Trace(header.Target, ttl, 2*time.Second); err != nil {
+					if _, ok := err.(*errors.ErrTTLExceed); ok {
+						e.traceRecords <- types.Record{
+							RecordHeader: *header,
+							Successful:   true,
+							Cost:         latency,
+							From:         from,
+							IsTarget:     false,
+							TTL:          ttl,
+						}
+						ttl++
+					} else {
+						e.traceRecords <- types.Record{
+							RecordHeader: *header,
+							Successful:   false,
+							TTL:          ttl,
+							ErrMsg:       err.Error(),
+						}
+						ttl = 1
+						gap = 4
+					}
+				} else {
+					e.traceRecords <- types.Record{
+						RecordHeader: *header,
+						Successful:   true,
+						Cost:         latency,
+						From:         from,
+						IsTarget:     true,
+						TTL:          ttl,
+					}
+					ttl = 1
+					gap = 4
+				}
+			}
+		}
+	}
 }
 
 func (e *Engine) pingTarget(header types.RecordHeader) {
@@ -154,7 +234,7 @@ func (e *Engine) sortedStatistic() {
 	})
 }
 
-func (e *Engine) dealRecords() {
+func (e *Engine) loop() {
 	ticker := time.NewTicker(defaultLoopPeriodic)
 	lastSort := int64(-1)
 	for t := range ticker.C {
@@ -168,12 +248,17 @@ func (e *Engine) dealRecords() {
 				case res := <-e.records:
 					st := e.getStatistic(res.RecordHeader)
 					st.DealRecord(t, res)
+				case res := <-e.traceRecords:
+					if e.traceResult == nil || e.traceResult.ID != res.ID {
+						e.traceResult = &statistic.TraceSt{ID: res.ID}
+					}
+					e.traceResult.DealRecord(t, res)
 				default:
 					if e.opt.Sort && t.Unix()-lastSort >= 5 {
 						e.sortedStatistic()
 						lastSort = t.Unix()
 					}
-					e.console.Render(t, e.stSlice)
+					e.console.Render(t, e.stSlice, e.traceResult)
 					return
 				}
 			}

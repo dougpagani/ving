@@ -35,3 +35,11 @@ func (p *NPing) PingOnce(target *protocol.NetworkTarget, timeout time.Duration) 
 		return 0, fmt.Errorf("unsupported network type, %v", target.Typ)
 	}
 }
+
+// Trace to target with address as `addr`
+func (p *NPing) Trace(target *protocol.NetworkTarget, ttl int, timeout time.Duration) (time.Duration, net.Addr, error) {
+	if target.Typ != protocol.IP {
+		return 0, nil, fmt.Errorf("unsupported network type, %v", target.Typ)
+	}
+	return p.icmpPing.Trace(target.Target.(*net.IPAddr), ttl, timeout)
+}

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"net"
 	"time"
 
 	"github.com/yittg/ving/net/protocol"
@@ -18,6 +19,9 @@ type Record struct {
 	RecordHeader
 
 	Successful bool
+	From       net.Addr
+	IsTarget   bool
+	TTL        int
 	Cost       time.Duration
 	ErrMsg     string
 	IsFatal    bool
