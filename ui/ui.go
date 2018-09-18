@@ -35,12 +35,13 @@ type renderUnit struct {
 }
 
 type traceUnit struct {
-	selectID   int
-	selectChan chan int
-	statistic  *statistic.TraceSt
-	list       *termui.List
-	lc         *termui.LineChart
-	from       *termui.List
+	selectID     int
+	selectChan   chan int
+	manuallyChan chan bool
+	statistic    *statistic.TraceSt
+	list         *termui.List
+	lc           *termui.LineChart
+	from         *termui.List
 }
 
 // NewConsole init console
@@ -198,7 +199,7 @@ func (c *Console) Render(t time.Time, sts []*statistic.Detail, ts *statistic.Tra
 }
 
 // ToggleTrace hide trace block
-func (c *Console) ToggleTrace(t time.Time, selectChan chan int) bool {
+func (c *Console) ToggleTrace(t time.Time, selectChan chan int, manuallyChan chan bool) bool {
 	if c.traceOn {
 		if len(termui.Body.Rows) > 1 {
 			termui.Body.Rows = termui.Body.Rows[:1]
@@ -239,6 +240,7 @@ func (c *Console) ToggleTrace(t time.Time, selectChan chan int) bool {
 		}
 		c.traceUnit.selectID = -1
 		c.traceUnit.selectChan = selectChan
+		c.traceUnit.manuallyChan = manuallyChan
 		c.traceUnit.from.Items = []string{}
 		c.traceUnit.lc.Data = map[string][]float64{}
 
@@ -321,6 +323,20 @@ func (c *Console) Run(stopChan chan bool, handlers ...EventHandler) {
 			return
 		}
 		c.traceUnit.selectChan <- c.traceUnit.selectID
+	})
+
+	termui.Handle("n", func(event termui.Event) {
+		if !c.traceOn || c.traceUnit.selectID < 0 {
+			return
+		}
+		c.traceUnit.manuallyChan <- true
+	})
+
+	termui.Handle("c", func(event termui.Event) {
+		if !c.traceOn || c.traceUnit.selectID < 0 {
+			return
+		}
+		c.traceUnit.manuallyChan <- false
 	})
 
 	for _, handler := range handlers {
