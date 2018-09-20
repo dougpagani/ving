@@ -23,7 +23,7 @@ type Option struct {
 	Timeout  time.Duration
 
 	Gateway bool
-	Trace bool
+	Trace   bool
 
 	Sort bool
 

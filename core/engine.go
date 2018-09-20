@@ -124,9 +124,10 @@ func (e *Engine) traceTarget() {
 			if !manually {
 				break
 			}
-			ttl, gap = e.doTraceTarget(header, ttl)
+			ttl = e.doTraceTarget(header, ttl)
 		case <-ticker.C:
 			if manually {
+				gap = 0
 				break
 			}
 			if !e.console.TraceOn() {
@@ -138,14 +139,18 @@ func (e *Engine) traceTarget() {
 				break
 			}
 			if e.console.TraceOn() && header != nil {
-				ttl, gap = e.doTraceTarget(header, ttl)
+				ttl = e.doTraceTarget(header, ttl)
+				if ttl == 1 {
+					gap = 4
+				}
 			}
 		}
 	}
 }
 
-func (e *Engine) doTraceTarget(header *types.RecordHeader, ttl int) (int, int) {
-	if latency, from, err := e.ping.Trace(header.Target, ttl, 2*time.Second); err != nil {
+func (e *Engine) doTraceTarget(header *types.RecordHeader, ttl int) int {
+	latency, from, err := e.ping.Trace(header.Target, ttl, 2*time.Second)
+	if err != nil {
 		if _, ok := err.(*errors.ErrTTLExceed); ok {
 			e.traceRecords <- types.Record{
 				RecordHeader: *header,
@@ -155,27 +160,25 @@ func (e *Engine) doTraceTarget(header *types.RecordHeader, ttl int) (int, int) {
 				IsTarget:     false,
 				TTL:          ttl,
 			}
-			return ttl + 1, 0
-		} else {
-			e.traceRecords <- types.Record{
-				RecordHeader: *header,
-				Successful:   false,
-				TTL:          ttl,
-				ErrMsg:       err.Error(),
-			}
-			return 1, 4
+			return ttl + 1
 		}
-	} else {
 		e.traceRecords <- types.Record{
 			RecordHeader: *header,
-			Successful:   true,
-			Cost:         latency,
-			From:         from,
-			IsTarget:     true,
+			Successful:   false,
 			TTL:          ttl,
+			ErrMsg:       err.Error(),
 		}
-		return 1, 4
+		return 1
 	}
+	e.traceRecords <- types.Record{
+		RecordHeader: *header,
+		Successful:   true,
+		Cost:         latency,
+		From:         from,
+		IsTarget:     true,
+		TTL:          ttl,
+	}
+	return 1
 }
 
 func (e *Engine) pingTarget(header types.RecordHeader) {
