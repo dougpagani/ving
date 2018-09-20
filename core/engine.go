@@ -34,7 +34,6 @@ type Engine struct {
 
 	records chan types.Record
 
-	traceOn       bool
 	traceSelected chan int
 	traceManually chan bool
 	traceRecords  chan types.Record
@@ -69,7 +68,6 @@ func NewEngine(opt *options.Option, targets []string) (*Engine, error) {
 		console:   ui.NewConsole(nTargets),
 		records:   records,
 
-		traceOn:       false,
 		traceSelected: make(chan int, 1),
 		traceManually: make(chan bool, 1),
 		traceRecords:  make(chan types.Record, 10),
@@ -95,9 +93,13 @@ func (e *Engine) Run() {
 	go e.loop()
 	go e.traceTarget()
 	e.console.Run(e.stop, ui.EventHandler{
-		Key: "t",
+		Key:          "t",
+		EmitAfterRun: e.opt.Trace,
+		HookAfterRun: func() {
+			e.traceSelected <- 0
+		},
 		Handler: func() {
-			e.traceOn = e.console.ToggleTrace(time.Now(), e.traceSelected, e.traceManually)
+			e.console.ToggleTrace(time.Now(), e.traceSelected, e.traceManually)
 		},
 	})
 }
@@ -127,7 +129,7 @@ func (e *Engine) traceTarget() {
 			if manually {
 				break
 			}
-			if !e.traceOn {
+			if !e.console.TraceOn() {
 				header = nil
 				e.traceResult = nil
 			}
@@ -135,7 +137,7 @@ func (e *Engine) traceTarget() {
 				gap--
 				break
 			}
-			if e.traceOn && header != nil {
+			if e.console.TraceOn() && header != nil {
 				ttl, gap = e.doTraceTarget(header, ttl)
 			}
 		}

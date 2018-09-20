@@ -198,6 +198,11 @@ func (c *Console) Render(t time.Time, sts []*statistic.Detail, ts *statistic.Tra
 	termui.Render(termui.Body)
 }
 
+// TraceOn check whether trace is active
+func (c *Console) TraceOn() bool {
+	return c.traceOn
+}
+
 // ToggleTrace hide trace block
 func (c *Console) ToggleTrace(t time.Time, selectChan chan int, manuallyChan chan bool) bool {
 	if c.traceOn {
@@ -238,7 +243,7 @@ func (c *Console) ToggleTrace(t time.Time, selectChan chan int, manuallyChan cha
 				from: listR,
 			}
 		}
-		c.traceUnit.selectID = -1
+		c.traceUnit.selectID = 0
 		c.traceUnit.selectChan = selectChan
 		c.traceUnit.manuallyChan = manuallyChan
 		c.traceUnit.from.Items = []string{}
@@ -343,6 +348,12 @@ func (c *Console) Run(stopChan chan bool, handlers ...EventHandler) {
 		termui.Handle(handler.Key, func(termui.Event) {
 			handler.Handler()
 		})
+		if handler.EmitAfterRun {
+			handler.Handler()
+			if handler.HookAfterRun != nil {
+				handler.HookAfterRun()
+			}
+		}
 	}
 
 	termui.Loop()
@@ -350,6 +361,8 @@ func (c *Console) Run(stopChan chan bool, handlers ...EventHandler) {
 
 // EventHandler for register handler for event key
 type EventHandler struct {
-	Key     string
-	Handler func()
+	Key          string
+	EmitAfterRun bool
+	HookAfterRun func()
+	Handler      func()
 }
