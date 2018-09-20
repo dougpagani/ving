@@ -92,12 +92,12 @@ func (e *Engine) Run() {
 	}
 	go e.loop()
 	go e.traceTarget()
+	if e.opt.Trace {
+		e.traceSelected <- 0
+	}
 	e.console.Run(e.stop, ui.EventHandler{
 		Key:          "t",
 		EmitAfterRun: e.opt.Trace,
-		HookAfterRun: func() {
-			e.traceSelected <- 0
-		},
 		Handler: func() {
 			e.console.ToggleTrace(time.Now(), e.traceSelected, e.traceManually)
 		},

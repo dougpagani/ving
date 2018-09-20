@@ -350,9 +350,6 @@ func (c *Console) Run(stopChan chan bool, handlers ...EventHandler) {
 		})
 		if handler.EmitAfterRun {
 			handler.Handler()
-			if handler.HookAfterRun != nil {
-				handler.HookAfterRun()
-			}
 		}
 	}
 
@@ -363,6 +360,5 @@ func (c *Console) Run(stopChan chan bool, handlers ...EventHandler) {
 type EventHandler struct {
 	Key          string
 	EmitAfterRun bool
-	HookAfterRun func()
 	Handler      func()
 }
