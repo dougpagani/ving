@@ -2,6 +2,8 @@
 
 # 🐸 ving
 
+![](./assets/screenshot.png)
+
 `ving` is a visualization ping utility written in Golang(1.11+).
 Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 
@@ -43,9 +45,16 @@ for more information, see the [man page](http://linux.die.net/man/7/capabilities
 ```
 $ ving 192.168.0.1 127.0.0.1 8.8.8.8
 
-$ ving -i 100ms 192.168.0.1
-
-$ ving -g
+$ ving
+Usage: ving [options] target [target...]
+for example: ving 127.0.0.1 192.168.0.1
+             ving -i 100ms 192.168.0.1
+  -g, --gateway             ping gateway
+  -i, --interval duration   ping interval, must >=10ms (default 1s)
+      --sort                sort by statistic
+  -t, --timeout duration    ping timeout, must >=10ms (default 1s)
+      --trace               traceroute the target after start
+  -v, --version             display the version
 ```
 
-![](./assets/screenshot.png)
+
