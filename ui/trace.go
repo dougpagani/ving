@@ -97,7 +97,10 @@ func (tu *TraceUnit) UpdateState(sts []*statistic.Detail, state interface{}) {
 		tu.list.Items[tu.selectID] =
 			fmt.Sprintf("[%s](bg-red)", tu.list.Items[tu.selectID])
 	}
-	tu.statistic = state.(*statistic.TraceSt)
+
+	if st, ok := state.(*statistic.TraceSt); ok {
+		tu.statistic = st
+	}
 	if tu.statistic != nil {
 		shift := len(tu.statistic.From) - tu.from.Height + 2
 		if shift < 0 {
