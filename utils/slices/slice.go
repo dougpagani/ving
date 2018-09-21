@@ -14,3 +14,18 @@ func Repeat(item interface{}, count int) []interface{} {
 	}
 	return s
 }
+
+// ContainStr check whether `slice` contain `target`
+func ContainStr(slice []string, target string) bool {
+	return IndexStrOf(slice, target) >= 0
+}
+
+// IndexStrOf for `target` index in `slice`, return -1 if `target` not found
+func IndexStrOf(slice []string, target string) int {
+	for i, item := range slice {
+		if item == target {
+			return i
+		}
+	}
+	return -1
+}

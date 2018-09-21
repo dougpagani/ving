@@ -59,18 +59,22 @@ func NewEngine(opt *options.Option, targets []string) (*Engine, error) {
 	stop := make(chan bool, 2)
 	records := make(chan types.Record, nTargets)
 
+	traceSelected := make(chan int, 1)
+	traceManually := make(chan bool, 1)
+	traceAddOn := ui.NewTraceUnit(traceSelected, traceManually, opt.Trace)
 	return &Engine{
 		opt:       opt,
 		targets:   networkTargets,
 		ping:      net.NewPing(stop),
 		statistic: make(map[int]*statistic.Detail, nTargets),
 		stSlice:   make([]*statistic.Detail, 0, nTargets),
-		console:   ui.NewConsole(nTargets),
 		records:   records,
 
-		traceSelected: make(chan int, 1),
-		traceManually: make(chan bool, 1),
+		traceSelected: traceSelected,
+		traceManually: traceManually,
 		traceRecords:  make(chan types.Record, 10),
+
+		console: ui.NewConsole(nTargets, []ui.AddOn{traceAddOn}),
 
 		stop: stop,
 	}, nil
@@ -95,13 +99,7 @@ func (e *Engine) Run() {
 	if e.opt.Trace {
 		e.traceSelected <- 0
 	}
-	e.console.Run(e.stop, ui.EventHandler{
-		Key:          "t",
-		EmitAfterRun: e.opt.Trace,
-		Handler: func() {
-			e.console.ToggleTrace(time.Now(), e.traceSelected, e.traceManually)
-		},
-	})
+	e.console.Run(e.stop)
 }
 
 func (e *Engine) traceTarget() {
@@ -276,7 +274,13 @@ func (e *Engine) loop() {
 						e.sortedStatistic()
 						lastSort = t.Unix()
 					}
-					e.console.Render(t, e.stSlice, e.traceResult)
+
+					var addOnState interface{}
+					if e.console.TraceOn() {
+						addOnState = e.traceResult
+					}
+
+					e.console.Render(t, e.stSlice, addOnState)
 					return
 				}
 			}
