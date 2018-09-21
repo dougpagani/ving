@@ -190,30 +190,42 @@ func (e *Engine) pingTarget(header types.RecordHeader) {
 		return
 	}
 	t := time.NewTicker(e.opt.Interval)
+
+	f := func() bool {
+		duration, err := e.ping.PingOnce(header.Target, e.opt.Timeout)
+		header.Rounds++
+		if err != nil {
+			_, isTimeout := err.(*errors.ErrTimeout)
+			e.records <- types.Record{
+				RecordHeader: header,
+				Successful:   false,
+				ErrMsg:       err.Error(),
+				IsFatal:      !isTimeout,
+			}
+			if !isTimeout {
+				return true
+			}
+		} else {
+			e.records <- types.Record{
+				RecordHeader: header,
+				Successful:   true,
+				Cost:         duration,
+			}
+		}
+		return false
+	}
+
+	if f() {
+		return
+	}
+
 	for {
 		select {
 		case <-e.stop:
 			return
 		case <-t.C:
-			duration, err := e.ping.PingOnce(header.Target, e.opt.Timeout)
-			header.Rounds++
-			if err != nil {
-				_, isTimeout := err.(*errors.ErrTimeout)
-				e.records <- types.Record{
-					RecordHeader: header,
-					Successful:   false,
-					ErrMsg:       err.Error(),
-					IsFatal:      !isTimeout,
-				}
-				if !isTimeout {
-					return
-				}
-			} else {
-				e.records <- types.Record{
-					RecordHeader: header,
-					Successful:   true,
-					Cost:         duration,
-				}
+			if f() {
+				return
 			}
 		}
 	}
@@ -252,11 +264,8 @@ func (e *Engine) sortedStatistic() {
 
 func (e *Engine) loop() {
 	ticker := time.NewTicker(defaultLoopPeriodic)
-	lastSort := int64(-1)
+	lastSort := time.Now()
 	for t := range ticker.C {
-		if lastSort < 0 {
-			lastSort = t.Unix()
-		}
 		func() {
 			e.retireRecords(t)
 			for {
@@ -270,9 +279,9 @@ func (e *Engine) loop() {
 					}
 					e.traceResult.DealRecord(t, res)
 				default:
-					if e.opt.Sort && t.Unix()-lastSort >= 5 {
+					if e.opt.Sort && lastSort.Add(5 * time.Second).Before(t) {
 						e.sortedStatistic()
-						lastSort = t.Unix()
+						lastSort = t
 					}
 
 					var addOnState interface{}
