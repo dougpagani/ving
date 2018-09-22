@@ -183,6 +183,14 @@ func (c *Console) removeAddOn() {
 	termui.Body.Align()
 }
 
+func (c *Console) toggleAddOn(addOn addons.UI) {
+	if c.activeAddOn == addOn {
+		c.removeAddOn()
+	} else {
+		c.setAddOn(addOn)
+	}
+}
+
 func (c *Console) dataLen(ru *renderUnit) int {
 	return ru.group.Width - 1
 }
@@ -193,6 +201,54 @@ func (c *Console) allocatedBlock(idx int) (*termui.Sparklines, *termui.Sparkline
 	group := termui.Body.Rows[0].Cols[groupID].Widget.(*termui.Sparklines)
 	sp := &(group.Lines[subID])
 	return group, sp
+}
+
+func (c *Console) registerAddOnEvents(systemKeys []string) {
+	onAddOnActive := func(f func(termui.Event)) func(termui.Event) {
+		return func(event termui.Event) {
+			if c.activeAddOn == nil {
+				return
+			}
+			f(event)
+		}
+	}
+
+	termui.Handle("<Enter>", onAddOnActive(func(event termui.Event) {
+		if cAwareAddOn, ok := c.activeAddOn.(addons.ConfirmAware); ok {
+			cAwareAddOn.OnEnter()
+		}
+	}))
+
+	termui.Handle("<Up>", "<Down>", onAddOnActive(func(event termui.Event) {
+		if vdAwareAddOn, ok := c.activeAddOn.(addons.VerticalDirectionAware); ok {
+			switch event.ID {
+			case "<Up>":
+				vdAwareAddOn.OnUp()
+			case "<Down>":
+				vdAwareAddOn.OnDown()
+			}
+		}
+	}))
+
+	var keys []string
+	for _, addOn := range c.addOns {
+		keys = append(keys, addOn.RespondEvents()...)
+		addOn.Init()
+		if addOn.ActivateAfterStart() {
+			c.setAddOn(addOn)
+		}
+		termui.Handle(addOn.ToggleKey(), func(termui.Event) {
+			c.toggleAddOn(addOn)
+		})
+	}
+	for _, key := range keys {
+		if len(key) == 0 || key[0] == '<' || slices.ContainStr(systemKeys, key) {
+			continue
+		}
+		termui.Handle(key, onAddOnActive(func(event termui.Event) {
+			c.activeAddOn.HandleKeyEvent(event)
+		}))
+	}
 }
 
 // Run a spark line ui
@@ -213,7 +269,6 @@ func (c *Console) Run(stopChan chan bool) {
 	termui.Body.Align()
 
 	systemKeys := []string{"q"}
-
 	termui.Handle("q", "<C-c>", func(termui.Event) {
 		close(stopChan)
 		termui.StopLoop()
@@ -225,59 +280,7 @@ func (c *Console) Run(stopChan chan bool) {
 		c.resizeSpGroup()
 		termui.Render(termui.Body)
 	})
-	termui.Handle("<Enter>", func(event termui.Event) {
-		if c.activeAddOn == nil {
-			return
-		}
-		if cAwareAddOn, ok := c.activeAddOn.(addons.ConfirmAware); ok {
-			cAwareAddOn.OnEnter()
-		}
-	})
-	termui.Handle("<Up>", func(event termui.Event) {
-		if c.activeAddOn == nil {
-			return
-		}
-		if vdAwareAddOn, ok := c.activeAddOn.(addons.VerticalDirectionAware); ok {
-			vdAwareAddOn.OnUp()
-		}
-	})
-	termui.Handle("<Down>", func(event termui.Event) {
-		if c.activeAddOn == nil {
-			return
-		}
-		if vdAwareAddOn, ok := c.activeAddOn.(addons.VerticalDirectionAware); ok {
-			vdAwareAddOn.OnDown()
-		}
-	})
-
-	var keys []string
-	for _, addOn := range c.addOns {
-		keys = append(keys, addOn.RespondEvents()...)
-		addOn.Init()
-		if addOn.ActivateAfterStart() {
-			c.setAddOn(addOn)
-		}
-		termui.Handle(addOn.ToggleKey(), func(termui.Event) {
-			if c.activeAddOn == addOn {
-				c.removeAddOn()
-			} else {
-				c.setAddOn(addOn)
-			}
-		})
-	}
-
-	for _, key := range keys {
-		if len(key) == 0 || key[0] == '<' || slices.ContainStr(systemKeys, key) {
-			continue
-		}
-		termui.Handle(key, func(event termui.Event) {
-			if c.activeAddOn == nil {
-				return
-			}
-			c.activeAddOn.HandleKeyEvent(event)
-		})
-	}
-
+	c.registerAddOnEvents(systemKeys)
 	termui.Loop()
 }
 
