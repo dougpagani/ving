@@ -7,17 +7,20 @@ import (
 
 	"github.com/yittg/ving/net/protocol"
 	"github.com/yittg/ving/net/protocol/icmp"
+	"github.com/yittg/ving/net/protocol/tcp"
 )
 
 // NPing network ping
 type NPing struct {
 	icmpPing *icmp.IPing
+	tcpPing  *tcp.TPing
 }
 
 // NewPing new a ping
 func NewPing(stopChan chan bool) *NPing {
 	return &NPing{
 		icmpPing: icmp.NewPing(stopChan),
+		tcpPing:  tcp.NewPing(stopChan),
 	}
 }
 
@@ -31,6 +34,8 @@ func (p *NPing) PingOnce(target *protocol.NetworkTarget, timeout time.Duration) 
 	switch target.Typ {
 	case protocol.IP:
 		return p.icmpPing.Ping(target.Target.(*net.IPAddr), timeout)
+	case protocol.TCP:
+		return p.tcpPing.Touch(target.Target.(*net.TCPAddr), timeout)
 	default:
 		return 0, fmt.Errorf("unsupported network type, %v", target.Typ)
 	}

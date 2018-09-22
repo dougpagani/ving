@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/jackpal/gateway"
@@ -52,5 +53,15 @@ func DiscoverGatewayTarget() *NetworkTarget {
 		Typ:    IP,
 		Raw:    ip.String() + "(G)",
 		Target: &net.IPAddr{IP: ip},
+	}
+}
+
+// TCPTarget tcp target as NetworkTarget
+func TCPTarget(networkTarget *NetworkTarget, port int) *NetworkTarget {
+	addr := networkTarget.Target.(*net.IPAddr)
+	return &NetworkTarget{
+		Typ:    TCP,
+		Raw:    fmt.Sprintf("%s:%d", networkTarget.Raw, port),
+		Target: &net.TCPAddr{IP: addr.IP, Port: port, Zone: addr.Zone},
 	}
 }

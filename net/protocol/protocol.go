@@ -7,4 +7,5 @@ type TargetType int
 const (
 	Unknown TargetType = iota
 	IP
+	TCP
 )

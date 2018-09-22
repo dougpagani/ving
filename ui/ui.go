@@ -237,9 +237,11 @@ func (c *Console) registerAddOnEvents(systemKeys []string) {
 		if addOn.ActivateAfterStart() {
 			c.setAddOn(addOn)
 		}
-		termui.Handle(addOn.ToggleKey(), func(termui.Event) {
-			c.toggleAddOn(addOn)
-		})
+		termui.Handle(addOn.ToggleKey(), func(a addons.UI) func(termui.Event) {
+			return func(termui.Event) {
+				c.toggleAddOn(a)
+			}
+		}(addOn))
 	}
 	for _, key := range keys {
 		if len(key) == 0 || key[0] == '<' || slices.ContainStr(systemKeys, key) {
