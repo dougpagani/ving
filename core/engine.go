@@ -6,6 +6,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/yittg/ving/addons"
+	"github.com/yittg/ving/addons/trace"
 	"github.com/yittg/ving/errors"
 	"github.com/yittg/ving/net"
 	"github.com/yittg/ving/net/protocol"
@@ -29,15 +31,11 @@ type Engine struct {
 
 	statistic map[int]*statistic.Detail
 	stSlice   []*statistic.Detail
+	records   chan types.Record
 
 	console *ui.Console
 
-	records chan types.Record
-
-	traceSelected chan int
-	traceManually chan bool
-	traceRecords  chan types.Record
-	traceResult   *statistic.TraceSt
+	addOns []addons.AddOn
 
 	stop chan bool
 }
@@ -58,23 +56,19 @@ func NewEngine(opt *options.Option, targets []string) (*Engine, error) {
 
 	stop := make(chan bool, 2)
 	records := make(chan types.Record, nTargets)
+	nPing := net.NewPing(stop)
 
-	traceSelected := make(chan int, 1)
-	traceManually := make(chan bool, 1)
-	traceAddOn := ui.NewTraceUnit(traceSelected, traceManually, opt.Trace)
+	traceAddOn := trace.NewTrace(networkTargets, stop, opt, nPing)
 	return &Engine{
 		opt:       opt,
 		targets:   networkTargets,
-		ping:      net.NewPing(stop),
+		ping:      nPing,
 		statistic: make(map[int]*statistic.Detail, nTargets),
 		stSlice:   make([]*statistic.Detail, 0, nTargets),
 		records:   records,
 
-		traceSelected: traceSelected,
-		traceManually: traceManually,
-		traceRecords:  make(chan types.Record, 10),
-
-		console: ui.NewConsole(nTargets, []ui.AddOn{traceAddOn}),
+		addOns:  []addons.AddOn{traceAddOn},
+		console: ui.NewConsole(nTargets, []addons.UI{traceAddOn.NewUI()}),
 
 		stop: stop,
 	}, nil
@@ -95,88 +89,10 @@ func (e *Engine) Run() {
 		go e.pingTarget(header)
 	}
 	go e.loop()
-	go e.traceTarget()
-	if e.opt.Trace {
-		e.traceSelected <- 0
+	for _, addOn := range e.addOns {
+		addOn.Start()
 	}
 	e.console.Run(e.stop)
-}
-
-func (e *Engine) traceTarget() {
-	ticker := time.NewTicker(time.Millisecond * 500)
-	var header *types.RecordHeader
-	ttl := 1
-	gap := 0 // display the final state for gap * ticker
-	manually := false
-	for {
-		select {
-		case <-e.stop:
-			return
-		case selected := <-e.traceSelected:
-			header = &types.RecordHeader{
-				ID:     selected,
-				Target: e.targets[selected],
-			}
-			ttl = 1
-		case manually = <-e.traceManually:
-			if !manually {
-				break
-			}
-			ttl = e.doTraceTarget(header, ttl)
-		case <-ticker.C:
-			if manually {
-				gap = 0
-				break
-			}
-			if !e.console.TraceOn() {
-				header = nil
-				e.traceResult = nil
-			}
-			if gap > 0 {
-				gap--
-				break
-			}
-			if e.console.TraceOn() && header != nil {
-				ttl = e.doTraceTarget(header, ttl)
-				if ttl == 1 {
-					gap = 4
-				}
-			}
-		}
-	}
-}
-
-func (e *Engine) doTraceTarget(header *types.RecordHeader, ttl int) int {
-	latency, from, err := e.ping.Trace(header.Target, ttl, 2*time.Second)
-	if err != nil {
-		if _, ok := err.(*errors.ErrTTLExceed); ok {
-			e.traceRecords <- types.Record{
-				RecordHeader: *header,
-				Successful:   true,
-				Cost:         latency,
-				From:         from,
-				IsTarget:     false,
-				TTL:          ttl,
-			}
-			return ttl + 1
-		}
-		e.traceRecords <- types.Record{
-			RecordHeader: *header,
-			Successful:   false,
-			TTL:          ttl,
-			ErrMsg:       err.Error(),
-		}
-		return 1
-	}
-	e.traceRecords <- types.Record{
-		RecordHeader: *header,
-		Successful:   true,
-		Cost:         latency,
-		From:         from,
-		IsTarget:     true,
-		TTL:          ttl,
-	}
-	return 1
 }
 
 func (e *Engine) pingTarget(header types.RecordHeader) {
@@ -268,28 +184,21 @@ func (e *Engine) loop() {
 	for t := range ticker.C {
 		func() {
 			e.retireRecords(t)
+			for _, addOn := range e.addOns {
+				addOn.Collect()
+			}
 			for {
 				select {
 				case res := <-e.records:
 					st := e.getStatistic(res.RecordHeader)
 					st.DealRecord(t, res)
-				case res := <-e.traceRecords:
-					if e.traceResult == nil || e.traceResult.ID != res.ID {
-						e.traceResult = &statistic.TraceSt{ID: res.ID}
-					}
-					e.traceResult.DealRecord(t, res)
 				default:
 					if e.opt.Sort && lastSort.Add(5 * time.Second).Before(t) {
 						e.sortedStatistic()
 						lastSort = t
 					}
 
-					var addOnState interface{}
-					if e.console.TraceOn() {
-						addOnState = e.traceResult
-					}
-
-					e.console.Render(t, e.stSlice, addOnState)
+					e.console.Render(t, e.stSlice)
 					return
 				}
 			}

@@ -1,0 +1,166 @@
+package trace
+
+import (
+	"time"
+
+	"github.com/yittg/ving/addons"
+	"github.com/yittg/ving/errors"
+	"github.com/yittg/ving/net"
+	"github.com/yittg/ving/net/protocol"
+	"github.com/yittg/ving/options"
+	"github.com/yittg/ving/statistic"
+	"github.com/yittg/ving/types"
+)
+
+type runtime struct {
+	targets []*protocol.NetworkTarget
+	stop    chan bool
+	ping    *net.NPing
+	opt     *options.Option
+	active  bool
+
+	traceSelected chan int
+	traceManually chan bool
+	traceRecords  chan types.Record
+	traceResult   *statistic.TraceSt
+}
+
+// NewTrace new trace runtime
+func NewTrace(targets []*protocol.NetworkTarget, stop chan bool, opt *options.Option, ping *net.NPing) addons.AddOn {
+	return &runtime{
+		targets: targets,
+		stop:    stop,
+		opt:     opt,
+		ping:    ping,
+
+		traceSelected: make(chan int, 1),
+		traceManually: make(chan bool, 1),
+		traceRecords:  make(chan types.Record, 10),
+	}
+}
+
+// Activate see `types.Activate`
+func (tr *runtime) Activate() {
+	tr.active = true
+}
+
+// Deactivate see `types.Deactivate`
+func (tr *runtime) Deactivate() {
+	tr.active = false
+	tr.traceResult = nil
+}
+
+// NewUI new a runtime unit instance
+func (tr *runtime) NewUI() addons.UI {
+	return &ui{
+		selectChan:   tr.traceSelected,
+		manuallyChan: tr.traceManually,
+		start:        tr.opt.Trace,
+		source:       tr,
+	}
+}
+
+// Start see `types.AddOn`
+func (tr *runtime) Start() {
+	go tr.traceTarget()
+	if tr.opt.Trace {
+		tr.traceSelected <- 0
+	}
+}
+
+func (tr *runtime) traceTarget() {
+	ticker := time.NewTicker(time.Millisecond * 500)
+	var header *types.RecordHeader
+	ttl := 1
+	gap := 0 // display the final state for gap * ticker
+	manually := false
+	for {
+		select {
+		case <-tr.stop:
+			return
+		case selected := <-tr.traceSelected:
+			header = &types.RecordHeader{
+				ID:     selected,
+				Target: tr.targets[selected],
+			}
+			ttl = 1
+		case manually = <-tr.traceManually:
+			if !manually {
+				break
+			}
+			ttl = tr.doTraceTarget(header, ttl)
+		case <-ticker.C:
+			if manually {
+				gap = 0
+				break
+			}
+			if !tr.active {
+				header = nil
+				tr.traceResult = nil
+			}
+			if gap > 0 {
+				gap--
+				break
+			}
+			if tr.active && header != nil {
+				ttl = tr.doTraceTarget(header, ttl)
+				if ttl == 1 {
+					gap = 4
+				}
+			}
+		}
+	}
+}
+
+func (tr *runtime) doTraceTarget(header *types.RecordHeader, ttl int) int {
+	latency, from, err := tr.ping.Trace(header.Target, ttl, 2*time.Second)
+	if err != nil {
+		if _, ok := err.(*errors.ErrTTLExceed); ok {
+			tr.traceRecords <- types.Record{
+				RecordHeader: *header,
+				Successful:   true,
+				Cost:         latency,
+				From:         from,
+				IsTarget:     false,
+				TTL:          ttl,
+			}
+			return ttl + 1
+		}
+		tr.traceRecords <- types.Record{
+			RecordHeader: *header,
+			Successful:   false,
+			TTL:          ttl,
+			ErrMsg:       err.Error(),
+		}
+		return 1
+	}
+	tr.traceRecords <- types.Record{
+		RecordHeader: *header,
+		Successful:   true,
+		Cost:         latency,
+		From:         from,
+		IsTarget:     true,
+		TTL:          ttl,
+	}
+	return 1
+}
+
+// Collect see `types.AddOn`
+func (tr *runtime) Collect() {
+	for {
+		select {
+		case res := <-tr.traceRecords:
+			if tr.traceResult == nil || tr.traceResult.ID != res.ID {
+				tr.traceResult = &statistic.TraceSt{ID: res.ID}
+			}
+			tr.traceResult.DealRecord(res)
+		default:
+			return
+		}
+	}
+}
+
+// RenderState see `types.AddOn`
+func (tr *runtime) RenderState() interface{} {
+	return tr.traceResult
+}

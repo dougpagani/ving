@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/gizak/termui"
+	"github.com/yittg/ving/addons"
 	"github.com/yittg/ving/statistic"
 	"github.com/yittg/ving/utils/slices"
 )
 
 const (
 	chartHeight = 3
-	traceHeight = 8
 )
 
 // Console display
@@ -21,8 +21,8 @@ type Console struct {
 	renderUnits []*renderUnit
 	colors      map[int]termui.Attribute
 
-	activeAddOn AddOn
-	addOns      []AddOn
+	activeAddOn addons.UI
+	addOns      []addons.UI
 
 	chartColumnN int
 	chartRowN    int
@@ -36,7 +36,7 @@ type renderUnit struct {
 }
 
 // NewConsole init console
-func NewConsole(nTargets int, addOns []AddOn) *Console {
+func NewConsole(nTargets int, addOns []addons.UI) *Console {
 	chartColumn := 1
 	chartRow := (nTargets + chartColumn - 1) / chartColumn
 	sparkLines := make([]termui.Sparkline, 0, nTargets)
@@ -134,7 +134,7 @@ func (c *Console) renderSp(t time.Time) {
 }
 
 // Render statistics
-func (c *Console) Render(t time.Time, sts []*statistic.Detail, addOnState interface{}) {
+func (c *Console) Render(t time.Time, sts []*statistic.Detail) {
 	for i, st := range sts {
 		if c.renderUnits[i] == nil {
 			sparklines, sparkline := c.allocatedBlock(i)
@@ -153,22 +153,13 @@ func (c *Console) Render(t time.Time, sts []*statistic.Detail, addOnState interf
 	c.renderSp(t)
 
 	if c.activeAddOn != nil {
-		c.activeAddOn.UpdateState(sts, addOnState)
+		c.activeAddOn.UpdateState(sts)
 	}
 
 	termui.Render(termui.Body)
 }
 
-// TraceOn check whether trace is active
-func (c *Console) TraceOn() bool {
-	if c.activeAddOn == nil {
-		return false
-	}
-	_, ok := c.activeAddOn.(*TraceUnit)
-	return ok
-}
-
-func (c *Console) setAddOn(addOn AddOn) {
+func (c *Console) setAddOn(addOn addons.UI) {
 	c.activeAddOn = addOn
 	addOn.Reset()
 	if len(termui.Body.Rows) == 1 {
@@ -178,9 +169,11 @@ func (c *Console) setAddOn(addOn AddOn) {
 	}
 	termui.Clear()
 	termui.Body.Align()
+	addOn.Activate()
 }
 
 func (c *Console) removeAddOn() {
+	c.activeAddOn.Deactivate()
 	c.activeAddOn = nil
 	if len(termui.Body.Rows) == 1 {
 		return
@@ -236,7 +229,7 @@ func (c *Console) Run(stopChan chan bool) {
 		if c.activeAddOn == nil {
 			return
 		}
-		if cAwareAddOn, ok := c.activeAddOn.(ConfirmAware); ok {
+		if cAwareAddOn, ok := c.activeAddOn.(addons.ConfirmAware); ok {
 			cAwareAddOn.OnEnter()
 		}
 	})
@@ -244,7 +237,7 @@ func (c *Console) Run(stopChan chan bool) {
 		if c.activeAddOn == nil {
 			return
 		}
-		if vdAwareAddOn, ok := c.activeAddOn.(VerticalDirectionAware); ok {
+		if vdAwareAddOn, ok := c.activeAddOn.(addons.VerticalDirectionAware); ok {
 			vdAwareAddOn.OnUp()
 		}
 	})
@@ -252,7 +245,7 @@ func (c *Console) Run(stopChan chan bool) {
 		if c.activeAddOn == nil {
 			return
 		}
-		if vdAwareAddOn, ok := c.activeAddOn.(VerticalDirectionAware); ok {
+		if vdAwareAddOn, ok := c.activeAddOn.(addons.VerticalDirectionAware); ok {
 			vdAwareAddOn.OnDown()
 		}
 	})

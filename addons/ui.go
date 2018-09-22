@@ -1,12 +1,12 @@
-package ui
+package addons
 
 import (
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/statistic"
 )
 
-// AddOn out of main board
-type AddOn interface {
+// UI out of main board
+type UI interface {
 	// Render represents how the add-on looks like
 	Render() *termui.Row
 
@@ -15,6 +15,12 @@ type AddOn interface {
 
 	// Reset add-on state
 	Reset()
+
+	// Activate  this add-on
+	Activate()
+
+	// Deactivate this add-on
+	Deactivate()
 
 	// ToggleKey activate/deactivate this add-on
 	ToggleKey() string
@@ -29,7 +35,7 @@ type AddOn interface {
 	ActivateAfterStart() bool
 
 	// UpdateState update state
-	UpdateState(sts []*statistic.Detail, state interface{})
+	UpdateState(sts []*statistic.Detail)
 }
 
 // ConfirmAware can handle entry event when active

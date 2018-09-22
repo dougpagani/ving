@@ -23,7 +23,7 @@ func transformFrom(from net.Addr) string {
 }
 
 // DealRecord deal new record at t
-func (st *TraceSt) DealRecord(t time.Time, record types.Record) {
+func (st *TraceSt) DealRecord(record types.Record) {
 	var from string
 	if record.Successful {
 		from = transformFrom(record.From)

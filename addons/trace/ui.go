@@ -1,4 +1,4 @@
-package ui
+package trace
 
 import (
 	"fmt"
@@ -7,29 +7,33 @@ import (
 	"github.com/yittg/ving/statistic"
 )
 
-// TraceUnit represents ui of trace functionality
-type TraceUnit struct {
+const (
+	traceHeight = 8
+)
+
+type ui struct {
 	selectID     int
 	selectChan   chan int
 	manuallyChan chan bool
-	statistic    *statistic.TraceSt
 	list         *termui.List
 	lc           *termui.LineChart
 	from         *termui.List
 	start        bool
+	source       *runtime
 }
 
-// NewTraceUnit new a trace unit instance
-func NewTraceUnit(selectChan chan int, manuallyChan chan bool, start bool) *TraceUnit {
-	return &TraceUnit{
-		selectChan:   selectChan,
-		manuallyChan: manuallyChan,
-		start:        start,
-	}
+// Activate see `ui.Activate`
+func (tu *ui) Activate() {
+	tu.source.Activate()
+}
+
+// Deactivate see `ui.AddOn`
+func (tu *ui) Deactivate() {
+	tu.source.Deactivate()
 }
 
 // Init see `AddOn`
-func (tu *TraceUnit) Init() {
+func (tu *ui) Init() {
 	tu.list = termui.NewList()
 	tu.list.BorderTop = true
 	tu.list.BorderLeft = false
@@ -61,14 +65,14 @@ func (tu *TraceUnit) Init() {
 }
 
 // Reset see `AddOn`
-func (tu *TraceUnit) Reset() {
+func (tu *ui) Reset() {
 	tu.selectID = 0
 	tu.from.Items = []string{}
 	tu.lc.Data = map[string][]float64{}
 }
 
 // Render see `AddOn`
-func (tu *TraceUnit) Render() *termui.Row {
+func (tu *ui) Render() *termui.Row {
 	return termui.NewRow(
 		termui.NewCol(3, 0, tu.list),
 		termui.NewCol(6, 0, tu.lc),
@@ -77,7 +81,7 @@ func (tu *TraceUnit) Render() *termui.Row {
 }
 
 // UpdateState see `AddOn`
-func (tu *TraceUnit) UpdateState(sts []*statistic.Detail, state interface{}) {
+func (tu *ui) UpdateState(sts []*statistic.Detail) {
 	maxID := 0
 	for _, st := range sts {
 		if maxID < st.ID {
@@ -98,31 +102,32 @@ func (tu *TraceUnit) UpdateState(sts []*statistic.Detail, state interface{}) {
 			fmt.Sprintf("[%s](bg-red)", tu.list.Items[tu.selectID])
 	}
 
-	if st, ok := state.(*statistic.TraceSt); ok {
-		tu.statistic = st
+	st, ok := tu.source.RenderState().(*statistic.TraceSt)
+	if !ok {
+		return
 	}
-	if tu.statistic != nil {
-		shift := len(tu.statistic.From) - tu.from.Height + 2
+	if st != nil {
+		shift := len(st.From) - tu.from.Height + 2
 		if shift < 0 {
 			shift = 0
 		}
-		tu.from.Items = tu.statistic.From[shift:]
-		tu.lc.Data = map[string][]float64{"default": tu.statistic.Cost}
+		tu.from.Items = st.From[shift:]
+		tu.lc.Data = map[string][]float64{"default": st.Cost}
 	}
 }
 
 // ToggleKey activate/deactivate this add-on
-func (tu *TraceUnit) ToggleKey() string {
+func (tu *ui) ToggleKey() string {
 	return "t"
 }
 
 // RespondEvents see `AddOn`
-func (tu *TraceUnit) RespondEvents() []string {
+func (tu *ui) RespondEvents() []string {
 	return []string{"n", "c"}
 }
 
 // HandleKeyEvent see `AddOn`
-func (tu *TraceUnit) HandleKeyEvent(ev termui.Event) {
+func (tu *ui) HandleKeyEvent(ev termui.Event) {
 	if ev.Type != termui.KeyboardEvent {
 		return
 	}
@@ -137,26 +142,26 @@ func (tu *TraceUnit) HandleKeyEvent(ev termui.Event) {
 }
 
 // ActivateAfterStart see `AddOn`
-func (tu *TraceUnit) ActivateAfterStart() bool {
+func (tu *ui) ActivateAfterStart() bool {
 	return tu.start
 }
 
 // OnEnter see `ConfirmAware`
-func (tu *TraceUnit) OnEnter() {
+func (tu *ui) OnEnter() {
 	if tu.selectID < 0 {
 		return
 	}
 	tu.selectChan <- tu.selectID
 }
 
-func (tu *TraceUnit) handleC() {
+func (tu *ui) handleC() {
 	if tu.selectID < 0 {
 		return
 	}
 	tu.manuallyChan <- false
 }
 
-func (tu *TraceUnit) handleN() {
+func (tu *ui) handleN() {
 	if tu.selectID < 0 {
 		return
 	}
@@ -164,7 +169,7 @@ func (tu *TraceUnit) handleN() {
 }
 
 // OnUp see `VerticalDirectionAware`
-func (tu *TraceUnit) OnUp() {
+func (tu *ui) OnUp() {
 	if len(tu.list.Items) == 0 {
 		return
 	}
@@ -176,7 +181,7 @@ func (tu *TraceUnit) OnUp() {
 }
 
 // OnDown see `VerticalDirectionAware`
-func (tu *TraceUnit) OnDown() {
+func (tu *ui) OnDown() {
 	if len(tu.list.Items) == 0 {
 		return
 	}
