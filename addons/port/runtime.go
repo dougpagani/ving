@@ -1,6 +1,7 @@
 package port
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/yittg/ving/addons"
@@ -47,6 +48,15 @@ func (rt *runtime) Init(targets []*protocol.NetworkTarget, stop chan bool, opt *
 	rt.stop = stop
 	rt.opt = opt
 	rt.ping = ping
+
+	if len(opt.MorePorts) > 0 {
+		customPorts := make([]port, 0, len(opt.MorePorts))
+		for _, p := range opt.MorePorts {
+			customPorts = append(customPorts, port{strconv.Itoa(p), p})
+		}
+		rt.targetPorts = append(customPorts, rt.targetPorts...)
+		rt.opt.Ports = true
+	}
 }
 
 func (rt *runtime) Start() {

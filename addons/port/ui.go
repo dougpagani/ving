@@ -96,7 +96,6 @@ func (pu *ui) RespondEvents() []string {
 }
 
 func (pu *ui) HandleKeyEvent(ev termui.Event) {
-	return
 }
 
 func (pu *ui) ActivateAfterStart() bool {

@@ -22,9 +22,10 @@ type Option struct {
 	Interval time.Duration
 	Timeout  time.Duration
 
-	Gateway bool
-	Trace   bool
-	Ports   bool
+	Gateway   bool
+	Trace     bool
+	Ports     bool
+	MorePorts []int
 
 	Sort bool
 
@@ -44,6 +45,7 @@ func ParseCommandLine(opt *Option) []string {
 	flag.BoolVarP(&opt.Gateway, "gateway", "g", false, "ping gateway")
 	flag.BoolVarP(&opt.Trace, "trace", "", false, "traceroute the target after start")
 	flag.BoolVarP(&opt.Ports, "ports", "", false, "touch the target ports after start")
+	flag.IntSliceVarP(&opt.MorePorts, "more-ports", "", nil, "add ports cares, e.g. 8080")
 	flag.BoolVarP(&opt.Sort, "sort", "", false, "sort by statistic")
 	flag.BoolVarP(&opt.ShowVersion, "version", "v", false, "display the version")
 	flag.Parse()
