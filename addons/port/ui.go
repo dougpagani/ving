@@ -128,13 +128,15 @@ func (pu *ui) UpdateState(sts []*statistic.Detail) {
 		return
 	}
 	state := st[pu.selectID]
-
 	keys := make(sort.StringSlice, 0, len(state))
 	for k := range state {
 		keys = append(keys, k)
 	}
 	sort.Sort(keys)
 	text := ""
+	if pu.source.checkDone(pu.selectID) {
+		text = "[✔](fg-green)  "
+	}
 	for i, k := range keys {
 		v := state[k]
 		if i > 0 {

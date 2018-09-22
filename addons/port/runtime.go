@@ -140,3 +140,8 @@ func (rt *runtime) NewUI() addons.UI {
 		source:     rt,
 	}
 }
+
+func (rt *runtime) checkDone(idx int) bool {
+	i, ok := rt.targetIter[idx]
+	return ok && i >= len(rt.targetPorts)
+}
