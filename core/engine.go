@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/yittg/ving/addons"
-	"github.com/yittg/ving/addons/trace"
 	"github.com/yittg/ving/errors"
 	"github.com/yittg/ving/net"
 	"github.com/yittg/ving/net/protocol"
@@ -58,7 +57,12 @@ func NewEngine(opt *options.Option, targets []string) (*Engine, error) {
 	records := make(chan types.Record, nTargets)
 	nPing := net.NewPing(stop)
 
-	traceAddOn := trace.NewTrace(networkTargets, stop, opt, nPing)
+	addOns := addons.All
+	var addOnUIs []addons.UI
+	for _, addOn := range addOns {
+		addOn.Init(networkTargets, stop, opt, nPing)
+		addOnUIs = append(addOnUIs, addOn.NewUI())
+	}
 	return &Engine{
 		opt:       opt,
 		targets:   networkTargets,
@@ -67,8 +71,8 @@ func NewEngine(opt *options.Option, targets []string) (*Engine, error) {
 		stSlice:   make([]*statistic.Detail, 0, nTargets),
 		records:   records,
 
-		addOns:  []addons.AddOn{traceAddOn},
-		console: ui.NewConsole(nTargets, []addons.UI{traceAddOn.NewUI()}),
+		addOns:  addOns,
+		console: ui.NewConsole(nTargets, addOnUIs),
 
 		stop: stop,
 	}, nil
@@ -193,7 +197,7 @@ func (e *Engine) loop() {
 					st := e.getStatistic(res.RecordHeader)
 					st.DealRecord(t, res)
 				default:
-					if e.opt.Sort && lastSort.Add(5 * time.Second).Before(t) {
+					if e.opt.Sort && lastSort.Add(5*time.Second).Before(t) {
 						e.sortedStatistic()
 						lastSort = t
 					}

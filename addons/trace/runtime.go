@@ -26,25 +26,28 @@ type runtime struct {
 }
 
 // NewTrace new trace runtime
-func NewTrace(targets []*protocol.NetworkTarget, stop chan bool, opt *options.Option, ping *net.NPing) addons.AddOn {
+func NewTrace() addons.AddOn {
 	return &runtime{
-		targets: targets,
-		stop:    stop,
-		opt:     opt,
-		ping:    ping,
-
 		traceSelected: make(chan int, 1),
 		traceManually: make(chan bool, 1),
 		traceRecords:  make(chan types.Record, 10),
 	}
 }
 
-// Activate see `types.Activate`
+// Init see `AddOn.Init`
+func (tr *runtime) Init(targets []*protocol.NetworkTarget, stop chan bool, opt *options.Option, ping *net.NPing) {
+	tr.targets = targets
+	tr.stop = stop
+	tr.opt = opt
+	tr.ping = ping
+}
+
+// Activate see `AddOn.Activate`
 func (tr *runtime) Activate() {
 	tr.active = true
 }
 
-// Deactivate see `types.Deactivate`
+// Deactivate see `AddOn.Deactivate`
 func (tr *runtime) Deactivate() {
 	tr.active = false
 	tr.traceResult = nil
