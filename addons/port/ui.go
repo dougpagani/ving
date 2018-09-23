@@ -155,18 +155,18 @@ func (pu *ui) UpdateState(sts []*statistic.Detail) {
 		}
 	}
 
-	items := make([]string, maxID+1)
-	for _, st := range sts {
-		items[st.ID] = st.Title
-	}
-	pu.list.Items = items
-	if pu.selectID >= len(pu.list.Items) {
+	if pu.selectID > maxID {
 		pu.selectID = -1
 	}
-	if pu.selectID >= 0 {
-		pu.list.Items[pu.selectID] =
-			fmt.Sprintf("[%s](bg-red)", pu.list.Items[pu.selectID])
+	items := make([]string, maxID+1)
+	for _, st := range sts {
+		if pu.selectID == st.ID {
+			items[st.ID] = fmt.Sprintf("[* %s](fg-yellow)", st.Title)
+		} else {
+			items[st.ID] = "  " + st.Title
+		}
 	}
+	pu.list.Items = items
 
 	st, ok := pu.source.RenderState().(map[int][]touchResultWrapper)
 	if !ok {
