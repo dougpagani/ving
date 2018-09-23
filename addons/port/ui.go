@@ -2,6 +2,8 @@ package port
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/statistic"
@@ -11,6 +13,15 @@ const (
 	portsHeight = 8
 )
 
+type viewEnum int
+
+const (
+	viewName viewEnum = iota
+	viewPort
+	viewAll
+	viewEnd
+)
+
 type ui struct {
 	selectID   int
 	selectChan chan int
@@ -18,6 +29,8 @@ type ui struct {
 	list  *termui.List
 	par   *termui.Par
 	start bool
+
+	view viewEnum
 
 	source *runtime
 }
@@ -91,14 +104,41 @@ func (pu *ui) ToggleKey() string {
 }
 
 func (pu *ui) RespondEvents() []string {
-	return []string{}
+	return []string{"v"}
 }
 
 func (pu *ui) HandleKeyEvent(ev termui.Event) {
+	switch ev.ID {
+	case "v":
+		pu.handleV()
+	}
+}
+
+func (pu *ui) handleV() {
+	pu.view++
+	if pu.view == viewEnd {
+		pu.view = 0
+	}
 }
 
 func (pu *ui) ActivateAfterStart() bool {
 	return pu.start
+}
+
+func (pu *ui) buildPortView(p port) string {
+	switch pu.view {
+	case viewName:
+		return p.name
+	case viewPort:
+		return strconv.Itoa(p.port)
+	case viewAll:
+		if strings.Index(p.name, strconv.Itoa(p.port)) >= 0 {
+			return p.name
+		}
+		return p.name + ":" + strconv.Itoa(p.port)
+	default:
+		return p.name
+	}
 }
 
 func (pu *ui) UpdateState(sts []*statistic.Detail) {
@@ -142,7 +182,7 @@ func (pu *ui) UpdateState(sts []*statistic.Detail) {
 		} else {
 			text += "[•](fg-red)"
 		}
-		text += " " + trw.port.name
+		text += " " + pu.buildPortView(trw.port)
 	}
 	pu.par.Text = text
 }

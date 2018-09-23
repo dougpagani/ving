@@ -31,6 +31,8 @@ Absolutely, you can also recover to automatic mode by tapping <kbd>c</kbd>.
 
 toggle by tapping <kbd>p</kbd> and use <kbd>▲</kbd> / <kbd>▼</kbd> to choose then <kbd>enter</kbd> to begin port probe.
 
+Tapping <kbd>v</kbd> will change the port view: name, port number, or all.
+
 # 🙈 Install
 
 ```

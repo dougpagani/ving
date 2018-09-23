@@ -27,8 +27,7 @@ type runtime struct {
 
 type touchResult struct {
 	id        int
-	portId    int
-	port      port
+	portID    int
 	connected bool
 	connTime  time.Duration
 }
@@ -101,8 +100,7 @@ func (rt *runtime) scanPorts() {
 			connTime, err := rt.ping.PingOnce(protocol.TCPTarget(host, p.port), time.Second)
 			rt.resultChan <- &touchResult{
 				id:        selected,
-				portId:    i,
-				port:      p,
+				portID:    i,
 				connected: err == nil,
 				connTime:  connTime,
 			}
@@ -130,7 +128,7 @@ func (rt *runtime) Collect() {
 				s = rt.prepareTouchResults()
 				rt.results[res.id] = s
 			}
-			s[res.portId].res = res
+			s[res.portID].res = res
 		default:
 			return
 		}
