@@ -104,13 +104,15 @@ func (pu *ui) ToggleKey() string {
 }
 
 func (pu *ui) RespondEvents() []string {
-	return []string{"v"}
+	return []string{"v", "r"}
 }
 
 func (pu *ui) HandleKeyEvent(ev termui.Event) {
 	switch ev.ID {
 	case "v":
 		pu.handleV()
+	case "r":
+		pu.handleR()
 	}
 }
 
@@ -119,6 +121,10 @@ func (pu *ui) handleV() {
 	if pu.view == viewEnd {
 		pu.view = 0
 	}
+}
+
+func (pu *ui) handleR() {
+	pu.source.resetTargetIter(pu.selectID)
 }
 
 func (pu *ui) ActivateAfterStart() bool {

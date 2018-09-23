@@ -18,7 +18,7 @@ var knownPorts = []port{
 	{"AMQP", 5671},
 	{"redis", 6379},
 	{"http(8008)", 8008},
-	{"http(8000)", 8080},
+	{"http(8080)", 8080},
 	{"zabbix", 10050},
 }
 

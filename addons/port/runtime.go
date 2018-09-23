@@ -17,11 +17,13 @@ type runtime struct {
 	opt     *options.Option
 	active  bool
 
-	selected   chan int
-	resultChan chan *touchResult
+	selected    chan int
+	resultChan  chan *touchResult
+	refreshChan chan int
 
 	targetPorts []port
 	targetIter  map[int]int
+	targetDone  map[int]bool
 	results     map[int][]touchResultWrapper
 }
 
@@ -44,7 +46,9 @@ func NewPortAddOn() addons.AddOn {
 		resultChan:  make(chan *touchResult, 1),
 		targetPorts: knownPorts,
 		targetIter:  make(map[int]int),
+		targetDone:  make(map[int]bool),
 		results:     make(map[int][]touchResultWrapper),
+		refreshChan: make(chan int, 1),
 	}
 }
 
@@ -85,6 +89,9 @@ func (rt *runtime) scanPorts() {
 				continue
 			}
 			host = rt.targets[selected]
+		case id := <-rt.refreshChan:
+			rt.targetIter[id] = 0
+			rt.results[id] = rt.prepareTouchResults()
 		case <-ticker.C:
 			if !rt.active || host == nil {
 				break
@@ -96,6 +103,7 @@ func (rt *runtime) scanPorts() {
 			if i >= len(rt.targetPorts) {
 				break
 			}
+			rt.targetIter[selected] = i + 1
 			p := rt.targetPorts[i]
 			connTime, err := rt.ping.PingOnce(protocol.TCPTarget(host, p.port), time.Second)
 			rt.resultChan <- &touchResult{
@@ -104,9 +112,12 @@ func (rt *runtime) scanPorts() {
 				connected: err == nil,
 				connTime:  connTime,
 			}
-			rt.targetIter[selected] = i + 1
 		}
 	}
+}
+
+func (rt *runtime) resetTargetIter(id int) {
+	rt.refreshChan <- id
 }
 
 func (rt *runtime) prepareTouchResults() []touchResultWrapper {
@@ -129,6 +140,9 @@ func (rt *runtime) Collect() {
 				rt.results[res.id] = s
 			}
 			s[res.portID].res = res
+			if res.portID+1 == len(rt.targetPorts) {
+				rt.targetDone[res.id] = true
+			}
 		default:
 			return
 		}
@@ -156,6 +170,6 @@ func (rt *runtime) NewUI() addons.UI {
 }
 
 func (rt *runtime) checkDone(idx int) bool {
-	i, ok := rt.targetIter[idx]
-	return ok && i >= len(rt.targetPorts)
+	done, ok := rt.targetDone[idx]
+	return ok && done
 }
