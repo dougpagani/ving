@@ -18,28 +18,34 @@ type runtime struct {
 	active  bool
 
 	selected   chan int
-	resultChan chan *res
+	resultChan chan *touchResult
 
 	targetPorts []port
 	targetIter  map[int]int
-	results     map[int]map[string]bool
+	results     map[int][]touchResultWrapper
 }
 
-type res struct {
+type touchResult struct {
 	id        int
-	port      string
+	portId    int
+	port      port
 	connected bool
 	connTime  time.Duration
+}
+
+type touchResultWrapper struct {
+	port port
+	res  *touchResult
 }
 
 // NewPortAddOn new port add-on
 func NewPortAddOn() addons.AddOn {
 	return &runtime{
 		selected:    make(chan int, 1),
-		resultChan:  make(chan *res, 1),
+		resultChan:  make(chan *touchResult, 1),
 		targetPorts: knownPorts,
 		targetIter:  make(map[int]int),
-		results:     make(map[int]map[string]bool),
+		results:     make(map[int][]touchResultWrapper),
 	}
 }
 
@@ -93,9 +99,10 @@ func (rt *runtime) scanPorts() {
 			}
 			p := rt.targetPorts[i]
 			connTime, err := rt.ping.PingOnce(protocol.TCPTarget(host, p.port), time.Second)
-			rt.resultChan <- &res{
+			rt.resultChan <- &touchResult{
 				id:        selected,
-				port:      p.name,
+				portId:    i,
+				port:      p,
 				connected: err == nil,
 				connTime:  connTime,
 			}
@@ -104,17 +111,26 @@ func (rt *runtime) scanPorts() {
 	}
 }
 
+func (rt *runtime) prepareTouchResults() []touchResultWrapper {
+	s := make([]touchResultWrapper, len(rt.targetPorts))
+	for i, port := range rt.targetPorts {
+		s[i] = touchResultWrapper{
+			port: port,
+		}
+	}
+	return s
+}
+
 func (rt *runtime) Collect() {
 	for {
 		select {
 		case res := <-rt.resultChan:
 			s, ok := rt.results[res.id]
 			if !ok {
-				s = make(map[string]bool)
+				s = rt.prepareTouchResults()
 				rt.results[res.id] = s
 			}
-
-			s[res.port] = res.connected
+			s[res.portId].res = res
 		default:
 			return
 		}

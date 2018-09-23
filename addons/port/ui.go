@@ -2,7 +2,6 @@ package port
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/statistic"
@@ -123,31 +122,27 @@ func (pu *ui) UpdateState(sts []*statistic.Detail) {
 			fmt.Sprintf("[%s](bg-red)", pu.list.Items[pu.selectID])
 	}
 
-	st, ok := pu.source.RenderState().(map[int]map[string]bool)
+	st, ok := pu.source.RenderState().(map[int][]touchResultWrapper)
 	if !ok {
 		return
 	}
-	state := st[pu.selectID]
-	keys := make(sort.StringSlice, 0, len(state))
-	for k := range state {
-		keys = append(keys, k)
-	}
-	sort.Sort(keys)
+	thisSt := st[pu.selectID]
 	text := ""
 	if pu.source.checkDone(pu.selectID) {
 		text = "[✔](fg-green)  "
 	}
-	for i, k := range keys {
-		v := state[k]
+	for i, trw := range thisSt {
 		if i > 0 {
 			text += " | "
 		}
-		if v {
+		if trw.res == nil {
+			text += "[•](fg-grey)"
+		} else if trw.res.connected {
 			text += "[•](fg-green)"
 		} else {
-			text += "[•](fg-grey)"
+			text += "[•](fg-red)"
 		}
-		text += " " + k
+		text += " " + trw.port.name
 	}
 	pu.par.Text = text
 }
