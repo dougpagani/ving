@@ -90,7 +90,9 @@ func (rt *runtime) scanPorts() {
 			}
 			host = rt.targets[selected]
 		case id := <-rt.refreshChan:
+			rt.selected <- id
 			rt.targetIter[id] = 0
+			rt.targetDone[id] = false
 			rt.results[id] = rt.prepareTouchResults()
 		case <-ticker.C:
 			if !rt.active || host == nil {
