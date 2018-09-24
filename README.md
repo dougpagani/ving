@@ -64,4 +64,6 @@ for example: ving 127.0.0.1 192.168.0.1
   -v, --version             display the version
 ```
 
+_A demo animation that demonstrates most of the functionality, although not perfectly rendered (see screenshot for actual rendering), thanks to [terminalizer](https://github.com/faressoft/terminalizer)._
+![](./assets/ving.gif)
 
