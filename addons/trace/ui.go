@@ -77,13 +77,16 @@ func (tu *ui) UpdateState(sts []*statistic.Detail) {
 	if !ok {
 		return
 	}
-	if st != nil {
+	if st != nil && st.ID == tu.TargetList.CurrentSelected() {
 		shift := len(st.From) - tu.from.Height + 2
 		if shift < 0 {
 			shift = 0
 		}
 		tu.from.Items = st.From[shift:]
 		tu.lc.Data = map[string][]float64{"default": st.Cost}
+	} else {
+		tu.lc.Data = nil
+		tu.from.Items = []string{"<enter> to start"}
 	}
 }
 
