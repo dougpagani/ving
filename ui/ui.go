@@ -218,12 +218,13 @@ func (c *Console) registerAddOnEvents(systemKeys []string) {
 		}
 	}))
 
-	termui.Handle("<Up>", "<Down>", onAddOnActive(func(event termui.Event) {
+	systemKeys = append(systemKeys, "j", "k")
+	termui.Handle("<Up>", "<Down>", "j", "k", onAddOnActive(func(event termui.Event) {
 		if vdAwareAddOn, ok := c.activeAddOn.(addons.VerticalDirectionAware); ok {
 			switch event.ID {
-			case "<Up>":
+			case "<Up>", "k":
 				vdAwareAddOn.OnUp()
-			case "<Down>":
+			case "<Down>", "j":
 				vdAwareAddOn.OnDown()
 			}
 		}
