@@ -8,11 +8,16 @@ import (
 	"github.com/yittg/ving/types"
 )
 
+const (
+	errChar = "-"
+)
+
 // TraceSt for trace
 type TraceSt struct {
-	ID   int
-	Cost []float64
-	From []string
+	ID            int
+	PreSuccessful bool
+	Cost          []float64
+	From          []string
 }
 
 func transformFrom(from net.Addr) string {
@@ -26,11 +31,10 @@ func transformFrom(from net.Addr) string {
 func (st *TraceSt) DealRecord(record types.Record) {
 	var from string
 	if record.Successful {
-		from = transformFrom(record.From)
+		from = fmt.Sprintf("%2d:%s", record.TTL, transformFrom(record.From))
 	} else {
-		from = record.ErrMsg
+		from = "   " + errChar
 	}
-	from = fmt.Sprintf("%2d:%s", record.TTL, from)
 	cost := float64(record.Cost) / float64(time.Millisecond)
 	if record.TTL == 1 {
 		st.From = []string{from}
@@ -38,9 +42,14 @@ func (st *TraceSt) DealRecord(record types.Record) {
 			st.Cost = []float64{cost}
 		}
 	} else {
-		st.From = append(st.From, from)
+		if !record.Successful && !st.PreSuccessful {
+			st.From[len(st.From)-1] += errChar
+		} else {
+			st.From = append(st.From, from)
+		}
 		if record.Successful {
 			st.Cost = append(st.Cost, cost)
 		}
 	}
+	st.PreSuccessful = record.Successful
 }

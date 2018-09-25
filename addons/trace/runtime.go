@@ -130,7 +130,7 @@ func (tr *runtime) doTraceTarget(header *types.RecordHeader, ttl int) int {
 			TTL:          ttl,
 			ErrMsg:       err.Error(),
 		}
-		return 1
+		return ttl + 1
 	}
 	tr.traceRecords <- types.Record{
 		RecordHeader: *header,
