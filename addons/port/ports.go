@@ -1,28 +1,42 @@
 package port
 
-var knownPorts = []port{
-	{"echo", 7},
-	{"ftp-t", 20},
-	{"ftp-c", 21},
+import (
+	"github.com/yittg/ving/addons/port/types"
+)
+
+var wellKnownPorts = []types.PortDesc{
 	{"ssh", 22},
 	{"http", 80},
 	{"https", 443},
 	{"DNSs", 853},
-	{"openVPN", 1194},
 	{"docker", 2375},
-	{"docker(ssl)", 2376},
 	{"etcd", 2379},
-	{"etcd(inner)", 2380},
 	{"mysql", 3306},
 	{"PostgreSQL", 5432},
 	{"AMQP", 5671},
 	{"redis", 6379},
-	{"http(8008)", 8008},
-	{"http(8080)", 8080},
 	{"zabbix", 10050},
 }
 
-type port struct {
-	name string
-	port int
+type sortable []types.PortDesc
+
+// Len of sortable ports describe
+func (s sortable) Len() int {
+	return len(s)
+}
+
+// Less compare btw ports describe
+func (s sortable) Less(i, j int) bool {
+	return s[i].Port < s[j].Port
+}
+
+// Swap btw ports describe
+func (s sortable) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+var predefinedPorts sortable
+
+func getPredefinedPorts() []types.PortDesc {
+	return predefinedPorts
 }

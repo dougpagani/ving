@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/pflag"
+	_ "github.com/yittg/ving/config"
 	"github.com/yittg/ving/core"
 	"github.com/yittg/ving/options"
 )

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/addons/common"
+	"github.com/yittg/ving/addons/port/types"
 	"github.com/yittg/ving/statistic"
 )
 
@@ -103,19 +104,19 @@ func (pu *ui) ActivateAfterStart() bool {
 	return pu.start
 }
 
-func (pu *ui) buildPortView(p port) string {
+func (pu *ui) buildPortView(p types.PortDesc) string {
 	switch pu.view {
 	case viewName:
-		return p.name
+		return p.Name
 	case viewPort:
-		return strconv.Itoa(p.port)
+		return strconv.Itoa(p.Port)
 	case viewAll:
-		if strings.Index(p.name, strconv.Itoa(p.port)) >= 0 {
-			return p.name
+		if strings.Index(p.Name, strconv.Itoa(p.Port)) >= 0 {
+			return p.Name
 		}
-		return p.name + ":" + strconv.Itoa(p.port)
+		return p.Name + ":" + strconv.Itoa(p.Port)
 	default:
-		return p.name
+		return p.Name
 	}
 }
 

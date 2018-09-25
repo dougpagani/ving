@@ -1,0 +1,29 @@
+[add-ons]
+
+[add-ons.ports]
+
+[[add-ons.ports.extra]]
+name = "echo"
+port = 7
+[[add-ons.ports.extra]]
+name = "ftp-t"
+port = 20
+[[add-ons.ports.extra]]
+name = "ftp-c"
+port = 21
+[[add-ons.ports.extra]]
+name = "openVPN"
+port = 1194
+[[add-ons.ports.extra]]
+name = "docker(ssl)"
+port = 2376
+[[add-ons.ports.extra]]
+name = "etcd(inner)"
+port = 2380
+[[add-ons.ports.extra]]
+name = "http(8008)"
+port = 8008
+[[add-ons.ports.extra]]
+name = "http(8080)"
+port = 8080
+

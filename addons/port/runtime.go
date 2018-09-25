@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/yittg/ving/addons"
+	"github.com/yittg/ving/addons/port/types"
 	"github.com/yittg/ving/net"
 	"github.com/yittg/ving/net/protocol"
 	"github.com/yittg/ving/options"
@@ -21,7 +22,7 @@ type runtime struct {
 	resultChan  chan *touchResult
 	refreshChan chan int
 
-	targetPorts []port
+	targetPorts []types.PortDesc
 	targetIter  map[int]int
 	targetDone  map[int]bool
 	results     map[int][]touchResultWrapper
@@ -35,7 +36,7 @@ type touchResult struct {
 }
 
 type touchResultWrapper struct {
-	port port
+	port types.PortDesc
 	res  *touchResult
 }
 
@@ -44,7 +45,7 @@ func NewPortAddOn() addons.AddOn {
 	return &runtime{
 		selected:    make(chan int, 1),
 		resultChan:  make(chan *touchResult, 1),
-		targetPorts: knownPorts,
+		targetPorts: getPredefinedPorts(),
 		targetIter:  make(map[int]int),
 		targetDone:  make(map[int]bool),
 		results:     make(map[int][]touchResultWrapper),
@@ -52,6 +53,7 @@ func NewPortAddOn() addons.AddOn {
 	}
 }
 
+// Init ports scanner
 func (rt *runtime) Init(targets []*protocol.NetworkTarget, stop chan bool, opt *options.Option, ping *net.NPing) {
 	rt.targets = targets
 	rt.stop = stop
@@ -59,15 +61,16 @@ func (rt *runtime) Init(targets []*protocol.NetworkTarget, stop chan bool, opt *
 	rt.ping = ping
 
 	if len(opt.MorePorts) > 0 {
-		customPorts := make([]port, 0, len(opt.MorePorts))
+		customPorts := make([]types.PortDesc, 0, len(opt.MorePorts))
 		for _, p := range opt.MorePorts {
-			customPorts = append(customPorts, port{strconv.Itoa(p), p})
+			customPorts = append(customPorts, types.PortDesc{Name: strconv.Itoa(p), Port: p})
 		}
 		rt.targetPorts = append(customPorts, rt.targetPorts...)
 		rt.opt.Ports = true
 	}
 }
 
+// Start ports scanner
 func (rt *runtime) Start() {
 	go rt.scanPorts()
 	if rt.opt.Ports {
@@ -107,7 +110,7 @@ func (rt *runtime) scanPorts() {
 			}
 			rt.targetIter[selected] = i + 1
 			p := rt.targetPorts[i]
-			connTime, err := rt.ping.PingOnce(protocol.TCPTarget(host, p.port), time.Second)
+			connTime, err := rt.ping.PingOnce(protocol.TCPTarget(host, p.Port), time.Second)
 			rt.resultChan <- &touchResult{
 				id:        selected,
 				portID:    i,
@@ -132,6 +135,7 @@ func (rt *runtime) prepareTouchResults() []touchResultWrapper {
 	return s
 }
 
+// Collect scan results
 func (rt *runtime) Collect() {
 	for {
 		select {
@@ -151,18 +155,22 @@ func (rt *runtime) Collect() {
 	}
 }
 
+// Activate ports scanner add-on
 func (rt *runtime) Activate() {
 	rt.active = true
 }
 
+// Deactivate ports scanner add-on
 func (rt *runtime) Deactivate() {
 	rt.active = false
 }
 
+// RenderState return state to render
 func (rt *runtime) RenderState() interface{} {
 	return rt.results
 }
 
+// NewUI init a ui for this add-on
 func (rt *runtime) NewUI() addons.UI {
 	return &ui{
 		selectChan: rt.selected,
