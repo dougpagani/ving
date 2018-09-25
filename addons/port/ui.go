@@ -1,11 +1,11 @@
 package port
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/gizak/termui"
+	"github.com/yittg/ving/addons/common"
 	"github.com/yittg/ving/statistic"
 )
 
@@ -23,59 +23,31 @@ const (
 )
 
 type ui struct {
-	selectID   int
-	selectChan chan int
+	*common.TargetList
 
-	list  *termui.List
-	par   *termui.Par
-	start bool
+	selectChan chan int
+	par        *termui.Par
+	start      bool
 
 	view viewEnum
 
 	source *runtime
 }
 
-// OnEnter see `ConfirmAware`
-func (pu *ui) OnEnter() {
-	if pu.selectID < 0 {
-		return
-	}
-	pu.selectChan <- pu.selectID
-}
-
-// OnUp see `VerticalDirectionAware`
-func (pu *ui) OnUp() {
-	if len(pu.list.Items) == 0 {
-		return
-	}
-	if pu.selectID < 0 {
-		pu.selectID = 0
-	} else {
-		pu.selectID = (pu.selectID - 1 + len(pu.list.Items)) % len(pu.list.Items)
-	}
-}
-
-// OnDown see `VerticalDirectionAware`
-func (pu *ui) OnDown() {
-	if len(pu.list.Items) == 0 {
-		return
-	}
-	pu.selectID = (pu.selectID + 1) % len(pu.list.Items)
-}
+// Render of port add-on
 func (pu *ui) Render() *termui.Row {
 	return termui.NewRow(
-		termui.NewCol(3, 0, pu.list),
+		termui.NewCol(3, 0, pu.TargetList.Render()),
 		termui.NewCol(9, 0, pu.par),
 	)
 }
 
+// Init the port add-on view
 func (pu *ui) Init() {
-	pu.list = termui.NewList()
-	pu.list.BorderTop = true
-	pu.list.BorderLeft = false
-	pu.list.BorderBottom = false
-	pu.list.BorderRight = false
-	pu.list.Height = portsHeight
+	pu.TargetList = common.NewTargetList(func(selectedID int) {
+		pu.selectChan <- selectedID
+	})
+	pu.TargetList.Init(portsHeight)
 
 	pu.par = termui.NewPar("")
 	pu.par.Height = portsHeight
@@ -87,26 +59,32 @@ func (pu *ui) Init() {
 	pu.Reset()
 }
 
+// Reset state of port add-on
 func (pu *ui) Reset() {
-	pu.selectID = 0
+	pu.TargetList.Reset()
 }
 
+// Activate this add-on
 func (pu *ui) Activate() {
 	pu.source.Activate()
 }
 
+// Deactivate this add-on
 func (pu *ui) Deactivate() {
 	pu.source.Deactivate()
 }
 
+// ToggleKey represents key to toggle
 func (pu *ui) ToggleKey() string {
 	return "p"
 }
 
+// RespondEvents return all keys this add-on can handle
 func (pu *ui) RespondEvents() []string {
 	return []string{"v", "r"}
 }
 
+// HandleKeyEvent do handle key event
 func (pu *ui) HandleKeyEvent(ev termui.Event) {
 	switch ev.ID {
 	case "v":
@@ -124,9 +102,10 @@ func (pu *ui) handleV() {
 }
 
 func (pu *ui) handleR() {
-	pu.source.resetTargetIter(pu.selectID)
+	pu.source.resetTargetIter(pu.TargetList.CurrentSelected())
 }
 
+// ActivateAfterStart see `addons.ActivateAfterStart`
 func (pu *ui) ActivateAfterStart() bool {
 	return pu.start
 }
@@ -147,34 +126,18 @@ func (pu *ui) buildPortView(p port) string {
 	}
 }
 
+// UpdateState of this add-on
 func (pu *ui) UpdateState(sts []*statistic.Detail) {
-	maxID := 0
-	for _, st := range sts {
-		if maxID < st.ID {
-			maxID = st.ID
-		}
-	}
-
-	if pu.selectID > maxID {
-		pu.selectID = -1
-	}
-	items := make([]string, maxID+1)
-	for _, st := range sts {
-		if pu.selectID == st.ID {
-			items[st.ID] = fmt.Sprintf("[* %s](fg-yellow)", st.Title)
-		} else {
-			items[st.ID] = "  " + st.Title
-		}
-	}
-	pu.list.Items = items
+	pu.TargetList.UpdateState(sts)
 
 	st, ok := pu.source.RenderState().(map[int][]touchResultWrapper)
 	if !ok {
 		return
 	}
-	thisSt := st[pu.selectID]
+	selected := pu.CurrentSelected()
+	thisSt := st[selected]
 	text := ""
-	if pu.source.checkDone(pu.selectID) {
+	if pu.source.checkDone(selected) {
 		text = "[✔](fg-green)  "
 	}
 	for i, trw := range thisSt {
