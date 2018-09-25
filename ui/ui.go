@@ -161,7 +161,6 @@ func (c *Console) Render(t time.Time, sts []*statistic.Detail) {
 
 func (c *Console) setAddOn(addOn addons.UI) {
 	c.activeAddOn = addOn
-	addOn.Reset()
 	if len(termui.Body.Rows) == 1 {
 		termui.Body.AddRows(addOn.Render())
 	} else {

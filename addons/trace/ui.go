@@ -58,15 +58,6 @@ func (tu *ui) Init() {
 	tu.from.BorderBottom = false
 	tu.from.BorderRight = false
 	tu.from.Height = traceHeight
-
-	tu.Reset()
-}
-
-// Reset see `AddOn`
-func (tu *ui) Reset() {
-	tu.TargetList.Reset()
-	tu.from.Items = []string{}
-	tu.lc.Data = map[string][]float64{}
 }
 
 // Render see `AddOn`

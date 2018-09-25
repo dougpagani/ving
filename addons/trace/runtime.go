@@ -50,7 +50,6 @@ func (tr *runtime) Activate() {
 // Deactivate see `AddOn.Deactivate`
 func (tr *runtime) Deactivate() {
 	tr.active = false
-	tr.traceResult = nil
 }
 
 // NewUI new a runtime unit instance
@@ -96,10 +95,6 @@ func (tr *runtime) traceTarget() {
 			if manually {
 				gap = 0
 				break
-			}
-			if !tr.active {
-				header = nil
-				tr.traceResult = nil
 			}
 			if gap > 0 {
 				gap--

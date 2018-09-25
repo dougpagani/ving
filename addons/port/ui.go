@@ -55,13 +55,6 @@ func (pu *ui) Init() {
 	pu.par.BorderLeft = false
 	pu.par.BorderBottom = false
 	pu.par.BorderRight = false
-
-	pu.Reset()
-}
-
-// Reset state of port add-on
-func (pu *ui) Reset() {
-	pu.TargetList.Reset()
 }
 
 // Activate this add-on

@@ -13,9 +13,6 @@ type UI interface {
 	// Init add-on state
 	Init()
 
-	// Reset add-on state
-	Reset()
-
 	// Activate  this add-on
 	Activate()
 

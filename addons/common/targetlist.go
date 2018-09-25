@@ -32,11 +32,6 @@ func (pu *TargetList) Init(height int) {
 	pu.list.Height = height
 }
 
-// Reset list
-func (pu *TargetList) Reset() {
-	pu.selectID = 0
-}
-
 // CurrentSelected return current selected target ID
 func (pu *TargetList) CurrentSelected() int {
 	return pu.selectID
