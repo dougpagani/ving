@@ -146,5 +146,8 @@ func (pu *ui) UpdateState(sts []*statistic.Detail) {
 		}
 		text += " " + pu.buildPortView(trw.port)
 	}
+	if text == "" {
+		text = "<enter> to start/continue"
+	}
 	pu.par.Text = text
 }
