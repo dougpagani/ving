@@ -28,7 +28,7 @@ func GetConfig() *Config {
 
 func init() {
 	for _, rcDir := range searchDir {
-		rcFile := rcDir + "/.ving.rc"
+		rcFile := rcDir + "/.ving.toml"
 		if _, err := os.Stat(rcFile); os.IsNotExist(err) {
 			continue
 		}
