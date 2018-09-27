@@ -23,7 +23,6 @@ type runtime struct {
 	refreshChan chan int
 
 	targetPorts []types.PortDesc
-	targetIter  map[int]int
 	targetDone  map[int]bool
 	results     map[int][]touchResultWrapper
 }
@@ -46,7 +45,6 @@ func NewPortAddOn() addons.AddOn {
 		selected:    make(chan int, 1),
 		resultChan:  make(chan *touchResult, 1),
 		targetPorts: getPredefinedPorts(),
-		targetIter:  make(map[int]int),
 		targetDone:  make(map[int]bool),
 		results:     make(map[int][]touchResultWrapper),
 		refreshChan: make(chan int, 1),
@@ -94,28 +92,22 @@ func (rt *runtime) scanPorts() {
 			host = rt.targets[selected]
 		case id := <-rt.refreshChan:
 			rt.selected <- id
-			rt.targetIter[id] = 0
 			rt.targetDone[id] = false
 			rt.results[id] = rt.prepareTouchResults()
 		case <-ticker.C:
-			if !rt.active || host == nil {
+			if !rt.active || host == nil || rt.targetDone[selected] {
 				break
 			}
-			i, ok := rt.targetIter[selected]
-			if !ok {
-				i = 0
-			}
-			if i >= len(rt.targetPorts) {
-				break
-			}
-			rt.targetIter[selected] = i + 1
-			p := rt.targetPorts[i]
-			connTime, err := rt.ping.PingOnce(protocol.TCPTarget(host, p.Port), time.Second)
-			rt.resultChan <- &touchResult{
-				id:        selected,
-				portID:    i,
-				connected: err == nil,
-				connTime:  connTime,
+			for i, port := range rt.targetPorts {
+				go func(idx int, p types.PortDesc) {
+					connTime, err := rt.ping.PingOnce(protocol.TCPTarget(host, p.Port), time.Second)
+					rt.resultChan <- &touchResult{
+						id:        selected,
+						portID:    idx,
+						connected: err == nil,
+						connTime:  connTime,
+					}
+				}(i, port)
 			}
 		}
 	}
@@ -137,6 +129,7 @@ func (rt *runtime) prepareTouchResults() []touchResultWrapper {
 
 // Collect scan results
 func (rt *runtime) Collect() {
+	updated := make(map[int]bool)
 	for {
 		select {
 		case res := <-rt.resultChan:
@@ -146,10 +139,18 @@ func (rt *runtime) Collect() {
 				rt.results[res.id] = s
 			}
 			s[res.portID].res = res
-			if res.portID+1 == len(rt.targetPorts) {
-				rt.targetDone[res.id] = true
-			}
+			updated[res.id] = true
 		default:
+			for id := range updated {
+				done := true
+				for _, s := range rt.results[id] {
+					if s.res == nil {
+						done = false
+						break
+					}
+				}
+				rt.targetDone[id] = done
+			}
 			return
 		}
 	}
