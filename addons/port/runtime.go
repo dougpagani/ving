@@ -114,6 +114,7 @@ func (rt *runtime) scanPorts() {
 				}(i, port)
 			}
 			g.Wait()
+			host = nil
 		}
 	}
 }
