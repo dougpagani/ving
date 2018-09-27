@@ -2,6 +2,7 @@ package port
 
 import (
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/yittg/ving/addons"
@@ -23,7 +24,7 @@ type runtime struct {
 	refreshChan chan int
 
 	targetPorts []types.PortDesc
-	targetDone  map[int]bool
+	targetDone  sync.Map
 	results     map[int][]touchResultWrapper
 }
 
@@ -43,9 +44,9 @@ type touchResultWrapper struct {
 func NewPortAddOn() addons.AddOn {
 	return &runtime{
 		selected:    make(chan int, 1),
-		resultChan:  make(chan *touchResult, 1),
+		resultChan:  make(chan *touchResult, 1024),
 		targetPorts: getPredefinedPorts(),
-		targetDone:  make(map[int]bool),
+		targetDone:  sync.Map{},
 		results:     make(map[int][]touchResultWrapper),
 		refreshChan: make(chan int, 1),
 	}
@@ -79,7 +80,7 @@ func (rt *runtime) Start() {
 func (rt *runtime) scanPorts() {
 	var selected int
 	var host *protocol.NetworkTarget
-	ticker := time.NewTicker(time.Millisecond * 500)
+	ticker := time.NewTicker(time.Millisecond * 10)
 	for {
 		select {
 		case <-rt.stop:
@@ -92,14 +93,17 @@ func (rt *runtime) scanPorts() {
 			host = rt.targets[selected]
 		case id := <-rt.refreshChan:
 			rt.selected <- id
-			rt.targetDone[id] = false
+			rt.targetDone.Store(id, false)
 			rt.results[id] = rt.prepareTouchResults()
 		case <-ticker.C:
-			if !rt.active || host == nil || rt.targetDone[selected] {
+			if !rt.active || host == nil || rt.checkDone(selected) {
 				break
 			}
+			g := sync.WaitGroup{}
 			for i, port := range rt.targetPorts {
+				g.Add(1)
 				go func(idx int, p types.PortDesc) {
+					defer g.Done()
 					connTime, err := rt.ping.PingOnce(protocol.TCPTarget(host, p.Port), time.Second)
 					rt.resultChan <- &touchResult{
 						id:        selected,
@@ -109,6 +113,7 @@ func (rt *runtime) scanPorts() {
 					}
 				}(i, port)
 			}
+			g.Wait()
 		}
 	}
 }
@@ -149,7 +154,7 @@ func (rt *runtime) Collect() {
 						break
 					}
 				}
-				rt.targetDone[id] = done
+				rt.targetDone.Store(id, done)
 			}
 			return
 		}
@@ -181,6 +186,6 @@ func (rt *runtime) NewUI() addons.UI {
 }
 
 func (rt *runtime) checkDone(idx int) bool {
-	done, ok := rt.targetDone[idx]
-	return ok && done
+	done, ok := rt.targetDone.Load(idx)
+	return ok && done.(bool)
 }
