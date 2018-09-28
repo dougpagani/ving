@@ -6,6 +6,7 @@
 
 `ving` is a ping utility with nice output, in Golang(1.11+), enhanced with some useful features,
 like trace, ports probe, and more yet to be implemented, 😝.
+
 Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 
 # 🦁 Features
@@ -20,19 +21,16 @@ Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 
 ## Feature details
 
-### trace
-
-toggle by tapping <kbd>t</kbd> and use <kbd>▲</kbd> / <kbd>▼</kbd> to choose then <kbd>enter</kbd> to begin a trace.
-
-By default, `ving` will trace a target automatically per 500ms along with the TTL increase until it touches the target, then begin another round trace.
-You can enable trace manually by tapping <kbd>n</kbd>, and each following tapping <kbd>n</kbd> will increase ttl and do a single probe.
-Absolutely, you can also recover to automatic mode by tapping <kbd>c</kbd>.
-
-### ports probe
-
-toggle by tapping <kbd>p</kbd> and use <kbd>▲</kbd> / <kbd>▼</kbd> to choose then <kbd>enter</kbd> to begin port probe.
-
-<kbd>v</kbd> will change the port view: name, port number, or all. <kbd>r</kbd> will refresh touch result and touch again from begin.
+| Features | Functionality | Details|
+|----------|---------------|--------|
+| Trace    | Toggle Key    | <kbd>t</kbd> |
+|          | Switch        | <kbd>▲</kbd> / <kbd>k</kbd>, <kbd>▼</kbd> / <kbd>j</kbd> |
+|          |               | <kbd>n</kbd>: manual mode |
+|          |               | <kbd>c</kbd>: continuous mode |
+| Ports    | Toggle Key    | <kbd>p</kbd> |
+|          | Switch        | <kbd>▲</kbd> / <kbd>k</kbd>, <kbd>▼</kbd> / <kbd>j</kbd> |
+|          |               | <kbd>v</kbd>: change view mode, name only, port number only, or both |
+|          |               | <kbd>r</kbd>: refresh and probe all ports again |
 
 # 🙈 Install
 
