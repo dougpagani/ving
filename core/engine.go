@@ -48,10 +48,10 @@ func NewEngine(opt *options.Option, targets []string) (*Engine, error) {
 	if opt.Gateway {
 		networkTargets = append(networkTargets, protocol.DiscoverGatewayTarget())
 	}
-	nTargets := len(networkTargets)
-	if nTargets == 0 {
-		return nil, &errors.ErrNoTarget{}
+	if len(networkTargets) == 0 {
+		networkTargets = append(networkTargets, protocol.ResolveTarget("localhost"))
 	}
+	nTargets := len(networkTargets)
 
 	stop := make(chan bool, 2)
 	records := make(chan types.Record, nTargets)
