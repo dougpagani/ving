@@ -29,8 +29,10 @@ Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 |          |               | <kbd>c</kbd>: continuous mode |
 | Ports    | Toggle Key    | <kbd>p</kbd> |
 |          | Switch        | <kbd>▲</kbd> / <kbd>k</kbd>, <kbd>▼</kbd> / <kbd>j</kbd> |
+|          |               | <kbd>f</kbd>: filter ports list, reached, unreached, or all |
 |          |               | <kbd>v</kbd>: change view mode, name only, port number only, or both |
 |          |               | <kbd>r</kbd>: refresh and probe all ports again |
+
 
 # 🙈 Install
 

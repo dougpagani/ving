@@ -23,6 +23,15 @@ const (
 	viewEnd
 )
 
+type filterEnum int
+
+const (
+	all filterEnum = iota
+	reached
+	unReached
+	end
+)
+
 type ui struct {
 	*common.TargetList
 
@@ -30,7 +39,8 @@ type ui struct {
 	par        *termui.Par
 	start      bool
 
-	view viewEnum
+	view   viewEnum
+	filter filterEnum
 
 	source *runtime
 }
@@ -75,16 +85,25 @@ func (pu *ui) ToggleKey() string {
 
 // RespondEvents return all keys this add-on can handle
 func (pu *ui) RespondEvents() []string {
-	return []string{"v", "r"}
+	return []string{"v", "r", "f"}
 }
 
 // HandleKeyEvent do handle key event
 func (pu *ui) HandleKeyEvent(ev termui.Event) {
 	switch ev.ID {
+	case "f":
+		pu.handleF()
 	case "v":
 		pu.handleV()
 	case "r":
 		pu.handleR()
+	}
+}
+
+func (pu *ui) handleF() {
+	pu.filter++
+	if pu.filter == end {
+		pu.filter = 0
 	}
 }
 
@@ -120,6 +139,19 @@ func (pu *ui) buildPortView(p types.PortDesc) string {
 	}
 }
 
+func (pu *ui) filtered(res *touchResult) bool {
+	switch pu.filter {
+	case all:
+		return true
+	case reached:
+		return res != nil && res.connected
+	case unReached:
+		return res != nil && !res.connected
+	default:
+		return true
+	}
+}
+
 // UpdateState of this add-on
 func (pu *ui) UpdateState(sts []*statistic.Detail) {
 	pu.TargetList.UpdateState(sts)
@@ -129,14 +161,31 @@ func (pu *ui) UpdateState(sts []*statistic.Detail) {
 		return
 	}
 	selected := pu.CurrentSelected()
-	thisSt := st[selected]
+	thisSt, ok := st[selected]
+	if !ok {
+		pu.par.Text = "<enter> to start/continue"
+		return
+	}
 	text := ""
 	if pu.source.checkDone(selected) {
 		text = "[✔](fg-green)  "
 	}
-	for i, trw := range thisSt {
-		if i > 0 {
+
+	if pu.filter == reached {
+		text += "[Reached](fg-green) "
+	} else if pu.filter == unReached {
+		text += "[unReached](fg-red) "
+	}
+
+	matched := false
+	for _, trw := range thisSt {
+		if !pu.filtered(trw.res) {
+			continue
+		}
+		if matched {
 			text += " | "
+		} else {
+			matched = true
 		}
 		if trw.res == nil {
 			text += "[•](fg-grey)"
@@ -147,8 +196,8 @@ func (pu *ui) UpdateState(sts []*statistic.Detail) {
 		}
 		text += " " + pu.buildPortView(trw.port)
 	}
-	if text == "" {
-		text = "<enter> to start/continue"
+	if !matched {
+		text += "none ports"
 	}
 	pu.par.Text = text
 }
