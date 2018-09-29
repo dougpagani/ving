@@ -50,20 +50,9 @@ for more information, see the [man page](http://linux.die.net/man/7/capabilities
 # ⚡ Usage
 
 ```
-$ ving 192.168.0.1 127.0.0.1 8.8.8.8
+$ ving
 
-$ ving --help
-Usage: ving [options] target [target...]
-for example: ving 127.0.0.1 192.168.0.1
-             ving -i 100ms 192.168.0.1
-  -g, --gateway             ping gateway
-  -i, --interval duration   ping interval, must >=10ms (default 1s)
-      --more-ports ints     add ports cares, e.g. 8080
-      --ports               touch the target ports after start
-      --sort                sort by statistic
-  -t, --timeout duration    ping timeout, must >=10ms (default 1s)
-      --trace               traceroute the target after start
-  -v, --version             display the version
+$ ving 8.8.8.8 -P 1-1024
 ```
 
 _A demo animation that demonstrates most of the functionality, although not perfectly rendered (see screenshot for actual rendering), thanks to [terminalizer](https://github.com/faressoft/terminalizer)._
