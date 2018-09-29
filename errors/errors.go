@@ -15,3 +15,11 @@ type ErrTTLExceed struct {
 func (*ErrTTLExceed) Error() string {
 	return "ttl exceed"
 }
+
+// ErrInvalidPort for invalid port
+type ErrInvalidPort struct {
+}
+
+func (*ErrInvalidPort) Error() string {
+	return "invalid port"
+}
