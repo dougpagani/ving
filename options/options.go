@@ -73,7 +73,7 @@ func (o *Option) portsValid() bool {
 			}
 		}
 	}
-	return true
+	return len(o.MorePorts) <= 1024
 }
 
 func (o *Option) isValid() bool {
@@ -90,7 +90,8 @@ func ParseCommandLine(opt *Option) []string {
 	flag.BoolVarP(&opt.Gateway, "gateway", "g", false, "ping gateway")
 	flag.BoolVarP(&opt.Trace, "trace", "", false, "traceroute the target after start")
 	flag.BoolVarP(&opt.Ports, "ports", "", false, "touch the target ports after start")
-	flag.StringArrayVarP(&opt.MorePortsStr, "more-ports", "P", nil, "ports to probe, e.g. 8080 8082-8092")
+	flag.StringArrayVarP(&opt.MorePortsStr, "more-ports", "P", nil,
+		"ports to probe, e.g. -P 8080 -P 8082-8092, no more than #1024 ports")
 	flag.BoolVarP(&opt.Sort, "sort", "", false, "sort by statistic")
 	flag.BoolVarP(&opt.ShowVersion, "version", "v", false, "display the version")
 	flag.Parse()
