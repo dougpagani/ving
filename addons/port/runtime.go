@@ -72,9 +72,6 @@ func (rt *runtime) Init(targets []*protocol.NetworkTarget, stop chan bool, opt *
 // Start ports scanner
 func (rt *runtime) Start() {
 	go rt.scanPorts()
-	if rt.opt.Ports {
-		rt.selected <- 0
-	}
 }
 
 func (rt *runtime) scanPorts() {

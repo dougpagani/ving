@@ -9,84 +9,104 @@ import (
 
 // TargetList common view for add-ons
 type TargetList struct {
-	selectID int
-	list     *termui.List
+	list *termui.List
 
 	opt *TargetListOpt
 
-	selectedCb func(int)
+	selectID     int
+	lastSelectID int
+	selectedCb   func(int)
 }
 
 // TargetListOpt for target list
 type TargetListOpt struct {
 	// SelectOnMove no need to extra confirm
 	SelectOnMove bool
+
+	// InitSelected initial selected id
+	InitSelected int
+
+	// CallBackImmediate after init
+	CallBackImmediate bool
 }
 
 // NewTargetList new a target list instance
 func NewTargetList(selectedCb func(int), opt *TargetListOpt) *TargetList {
 	return &TargetList{
-		selectedCb: selectedCb,
-		opt:        opt,
+		selectedCb:   selectedCb,
+		opt:          opt,
+		selectID:     opt.InitSelected,
+		lastSelectID: -1,
 	}
 }
 
 // Init init list
-func (pu *TargetList) Init(height int) {
-	pu.list = termui.NewList()
-	pu.list.BorderTop = true
-	pu.list.BorderLeft = false
-	pu.list.BorderBottom = false
-	pu.list.BorderRight = false
-	pu.list.Height = height
+func (tl *TargetList) Init(height int) {
+	tl.list = termui.NewList()
+	tl.list.BorderTop = true
+	tl.list.BorderLeft = false
+	tl.list.BorderBottom = false
+	tl.list.BorderRight = false
+	tl.list.Height = height
+	if tl.opt.CallBackImmediate {
+		tl.callBackSelected()
+	}
 }
 
 // CurrentSelected return current selected target ID
-func (pu *TargetList) CurrentSelected() int {
-	return pu.selectID
+func (tl *TargetList) CurrentSelected() int {
+	return tl.selectID
+}
+
+func (tl *TargetList) callBackSelected() {
+	if tl.selectID == tl.lastSelectID {
+		return
+	}
+	tl.lastSelectID = tl.selectID
+	tl.selectedCb(tl.selectID)
 }
 
 // OnEnter see `ConfirmAware`
-func (pu *TargetList) OnEnter() {
-	if pu.selectID < 0 {
+func (tl *TargetList) OnEnter() {
+	if tl.selectID < 0 {
 		return
 	}
-	pu.selectedCb(pu.selectID)
+	tl.callBackSelected()
 }
 
 // OnUp see `VerticalDirectionAware`
-func (pu *TargetList) OnUp() {
-	if len(pu.list.Items) == 0 {
+func (tl *TargetList) OnUp() {
+	if len(tl.list.Items) == 0 {
 		return
 	}
-	if pu.selectID < 0 {
-		pu.selectID = 0
+	if tl.selectID < 0 {
+		tl.selectID = 0
 	} else {
-		pu.selectID = (pu.selectID - 1 + len(pu.list.Items)) % len(pu.list.Items)
+		tl.selectID = (tl.selectID - 1 + len(tl.list.Items)) % len(tl.list.Items)
 	}
-	if pu.opt.SelectOnMove {
-		pu.selectedCb(pu.selectID)
+	if tl.opt.SelectOnMove {
+		tl.callBackSelected()
 	}
 }
 
 // OnDown see `VerticalDirectionAware`
-func (pu *TargetList) OnDown() {
-	if len(pu.list.Items) == 0 {
+func (tl *TargetList) OnDown() {
+	if len(tl.list.Items) == 0 {
 		return
 	}
-	pu.selectID = (pu.selectID + 1) % len(pu.list.Items)
-	if pu.opt.SelectOnMove {
-		pu.selectedCb(pu.selectID)
+	tl.selectID = (tl.selectID + 1) % len(tl.list.Items)
+	if tl.opt.SelectOnMove {
+		tl.callBackSelected()
 	}
 }
 
 // Render list render
-func (pu *TargetList) Render() termui.GridBufferer {
-	return pu.list
+func (tl *TargetList) Render() termui.GridBufferer {
+	return tl.list
 }
 
 // UpdateState of the target list component
-func (pu *TargetList) UpdateState(sts []*statistic.Detail) {
+func (tl *TargetList) UpdateState(sts []*statistic.Detail) {
 	maxID := 0
 	for _, st := range sts {
 		if maxID < st.ID {
@@ -94,16 +114,16 @@ func (pu *TargetList) UpdateState(sts []*statistic.Detail) {
 		}
 	}
 
-	if pu.selectID > maxID {
-		pu.selectID = -1
+	if tl.selectID > maxID {
+		tl.selectID = -1
 	}
 	items := make([]string, maxID+1)
 	for _, st := range sts {
-		if pu.selectID == st.ID {
+		if tl.selectID == st.ID {
 			items[st.ID] = fmt.Sprintf("[* %s](fg-yellow)", st.Title)
 		} else {
 			items[st.ID] = "  " + st.Title
 		}
 	}
-	pu.list.Items = items
+	tl.list.Items = items
 }

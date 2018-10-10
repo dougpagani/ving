@@ -65,9 +65,6 @@ func (tr *runtime) NewUI() addons.UI {
 // Start see `types.AddOn`
 func (tr *runtime) Start() {
 	go tr.traceTarget()
-	if tr.opt.Trace {
-		tr.traceSelected <- 0
-	}
 }
 
 func (tr *runtime) traceTarget() {

@@ -35,7 +35,8 @@ func (tu *ui) Deactivate() {
 // Init see `AddOn`
 func (tu *ui) Init() {
 	opt := &common.TargetListOpt{
-		SelectOnMove: tu.start,
+		SelectOnMove:      tu.start,
+		CallBackImmediate: tu.start,
 	}
 	tu.TargetList = common.NewTargetList(func(selected int) {
 		tu.selectChan <- selected
