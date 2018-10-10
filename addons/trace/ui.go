@@ -34,9 +34,12 @@ func (tu *ui) Deactivate() {
 
 // Init see `AddOn`
 func (tu *ui) Init() {
+	opt := &common.TargetListOpt{
+		SelectOnMove: tu.start,
+	}
 	tu.TargetList = common.NewTargetList(func(selected int) {
 		tu.selectChan <- selected
-	})
+	}, opt)
 	tu.TargetList.Init(traceHeight)
 
 	tu.lc = termui.NewLineChart()

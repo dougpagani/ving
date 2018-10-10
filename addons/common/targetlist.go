@@ -12,13 +12,22 @@ type TargetList struct {
 	selectID int
 	list     *termui.List
 
+	opt *TargetListOpt
+
 	selectedCb func(int)
 }
 
+// TargetListOpt for target list
+type TargetListOpt struct {
+	// SelectOnMove no need to extra confirm
+	SelectOnMove bool
+}
+
 // NewTargetList new a target list instance
-func NewTargetList(selectedCb func(int)) *TargetList {
+func NewTargetList(selectedCb func(int), opt *TargetListOpt) *TargetList {
 	return &TargetList{
 		selectedCb: selectedCb,
+		opt:        opt,
 	}
 }
 
@@ -55,6 +64,9 @@ func (pu *TargetList) OnUp() {
 	} else {
 		pu.selectID = (pu.selectID - 1 + len(pu.list.Items)) % len(pu.list.Items)
 	}
+	if pu.opt.SelectOnMove {
+		pu.selectedCb(pu.selectID)
+	}
 }
 
 // OnDown see `VerticalDirectionAware`
@@ -63,6 +75,9 @@ func (pu *TargetList) OnDown() {
 		return
 	}
 	pu.selectID = (pu.selectID + 1) % len(pu.list.Items)
+	if pu.opt.SelectOnMove {
+		pu.selectedCb(pu.selectID)
+	}
 }
 
 // Render list render
