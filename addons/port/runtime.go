@@ -55,6 +55,11 @@ func NewPortAddOn() addons.AddOn {
 	}
 }
 
+// Desc of this port add-on
+func (*runtime) Desc() string {
+	return "port probe"
+}
+
 // Init ports scanner
 func (rt *runtime) Init(targets []*protocol.NetworkTarget, stop chan bool, opt *options.Option, ping *net.NPing) {
 	rt.targets = targets

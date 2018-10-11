@@ -8,6 +8,8 @@ import (
 
 // AddOn features
 type AddOn interface {
+	Desc() string
+
 	Init([]*protocol.NetworkTarget, chan bool, *options.Option, *net.NPing)
 
 	Start()

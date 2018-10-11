@@ -38,6 +38,11 @@ func NewTrace() addons.AddOn {
 	}
 }
 
+// Desc of this trace add-on
+func (*runtime) Desc() string {
+	return "traceroute the target"
+}
+
 // Init see `AddOn.Init`
 func (tr *runtime) Init(targets []*protocol.NetworkTarget, stop chan bool, opt *options.Option, ping *net.NPing) {
 	tr.targets = targets
