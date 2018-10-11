@@ -1,4 +1,4 @@
-package statistic
+package trace
 
 import (
 	"fmt"
@@ -12,8 +12,8 @@ const (
 	errChar = "-"
 )
 
-// TraceSt for trace
-type TraceSt struct {
+// St for trace
+type St struct {
 	ID            int
 	PreSuccessful bool
 	Cost          []float64
@@ -28,7 +28,7 @@ func transformFrom(from net.Addr) string {
 }
 
 // DealRecord deal new record at t
-func (st *TraceSt) DealRecord(record types.Record) {
+func (st *St) DealRecord(record types.Record) {
 	var from string
 	if record.Successful {
 		from = fmt.Sprintf("%2d:%s", record.TTL, transformFrom(record.From))

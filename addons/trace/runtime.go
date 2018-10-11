@@ -9,7 +9,6 @@ import (
 	"github.com/yittg/ving/net"
 	"github.com/yittg/ving/net/protocol"
 	"github.com/yittg/ving/options"
-	"github.com/yittg/ving/statistic"
 	"github.com/yittg/ving/types"
 )
 
@@ -23,7 +22,7 @@ type runtime struct {
 	traceSelected chan int
 	traceManually chan bool
 	traceRecords  chan types.Record
-	traceResult   *statistic.TraceSt
+	traceResult   *St
 
 	ui         *ui
 	initUILock sync.Once
@@ -155,7 +154,7 @@ func (tr *runtime) Collect() {
 		select {
 		case res := <-tr.traceRecords:
 			if tr.traceResult == nil || tr.traceResult.ID != res.ID {
-				tr.traceResult = &statistic.TraceSt{ID: res.ID}
+				tr.traceResult = &St{ID: res.ID}
 			}
 			tr.traceResult.DealRecord(res)
 		default:
