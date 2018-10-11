@@ -1,6 +1,7 @@
 package trace
 
 import (
+	"sync"
 	"time"
 
 	"github.com/yittg/ving/addons"
@@ -23,6 +24,9 @@ type runtime struct {
 	traceManually chan bool
 	traceRecords  chan types.Record
 	traceResult   *statistic.TraceSt
+
+	ui         *ui
+	initUILock sync.Once
 }
 
 // NewTrace new trace runtime
@@ -52,14 +56,14 @@ func (tr *runtime) Deactivate() {
 	tr.active = false
 }
 
-// NewUI new a runtime unit instance
-func (tr *runtime) NewUI() addons.UI {
-	return &ui{
-		selectChan:   tr.traceSelected,
-		manuallyChan: tr.traceManually,
-		start:        tr.opt.Trace,
-		source:       tr,
+// GetUI new a runtime unit instance
+func (tr *runtime) GetUI() addons.UI {
+	if tr.ui == nil {
+		tr.initUILock.Do(func() {
+			tr.ui = newUI(tr)
+		})
 	}
+	return tr.ui
 }
 
 // Start see `types.AddOn`

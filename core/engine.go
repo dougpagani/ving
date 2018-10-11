@@ -61,7 +61,7 @@ func NewEngine(opt *options.Option, targets []string) (*Engine, error) {
 	var addOnUIs []addons.UI
 	for _, addOn := range addOns {
 		addOn.Init(networkTargets, stop, opt, nPing)
-		addOnUIs = append(addOnUIs, addOn.NewUI())
+		addOnUIs = append(addOnUIs, addOn.GetUI())
 	}
 	return &Engine{
 		opt:       opt,

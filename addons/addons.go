@@ -20,5 +20,5 @@ type AddOn interface {
 
 	RenderState() interface{}
 
-	NewUI() UI
+	GetUI() UI
 }

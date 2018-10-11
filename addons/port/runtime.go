@@ -26,6 +26,9 @@ type runtime struct {
 	targetPorts []types.PortDesc
 	targetDone  sync.Map
 	results     map[int][]touchResultWrapper
+
+	ui         *ui
+	initUILock sync.Once
 }
 
 type touchResult struct {
@@ -174,13 +177,14 @@ func (rt *runtime) RenderState() interface{} {
 	return rt.results
 }
 
-// NewUI init a ui for this add-on
-func (rt *runtime) NewUI() addons.UI {
-	return &ui{
-		selectChan: rt.selected,
-		start:      rt.opt.Ports,
-		source:     rt,
+// GetUI init a ui for this add-on
+func (rt *runtime) GetUI() addons.UI {
+	if rt.ui == nil {
+		rt.initUILock.Do(func() {
+			rt.ui = newUI(rt)
+		})
 	}
+	return rt.ui
 }
 
 func (rt *runtime) checkDone(idx int) bool {

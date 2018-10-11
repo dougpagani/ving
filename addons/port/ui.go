@@ -45,6 +45,14 @@ type ui struct {
 	source *runtime
 }
 
+func newUI(rt *runtime) *ui {
+	return &ui{
+		selectChan: rt.selected,
+		start:      rt.opt.Ports,
+		source:     rt,
+	}
+}
+
 // Render of port add-on
 func (pu *ui) Render() *termui.Row {
 	return termui.NewRow(

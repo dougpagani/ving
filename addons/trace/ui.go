@@ -22,6 +22,15 @@ type ui struct {
 	source *runtime
 }
 
+func newUI(tr *runtime) *ui {
+	return &ui{
+		selectChan:   tr.traceSelected,
+		manuallyChan: tr.traceManually,
+		start:        tr.opt.Trace,
+		source:       tr,
+	}
+}
+
 // Activate see `ui.Activate`
 func (tu *ui) Activate() {
 	tu.source.Activate()
