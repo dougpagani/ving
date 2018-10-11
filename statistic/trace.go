@@ -32,6 +32,9 @@ func (st *TraceSt) DealRecord(record types.Record) {
 	var from string
 	if record.Successful {
 		from = fmt.Sprintf("%2d:%s", record.TTL, transformFrom(record.From))
+		if record.IsTarget {
+			from = fmt.Sprintf("[%s](fg-green,fg-bold)", from)
+		}
 	} else {
 		from = "   " + errChar
 	}
