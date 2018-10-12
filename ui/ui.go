@@ -161,22 +161,18 @@ func (c *Console) Render(t time.Time, sts []*statistic.Detail) {
 
 func (c *Console) setAddOn(addOn addons.UI) {
 	c.activeAddOn = addOn
-	if len(termui.Body.Rows) == 1 {
-		termui.Body.AddRows(addOn.Render())
-	} else {
-		termui.Body.Rows[1] = addOn.Render()
-	}
+	termui.Body.AddRows(addOn.Render())
 	termui.Clear()
 	termui.Body.Align()
 	addOn.Activate()
 }
 
 func (c *Console) removeAddOn() {
-	c.activeAddOn.Deactivate()
-	c.activeAddOn = nil
-	if len(termui.Body.Rows) == 1 {
+	if c.activeAddOn == nil {
 		return
 	}
+	c.activeAddOn.Deactivate()
+	c.activeAddOn = nil
 	termui.Body.Rows = termui.Body.Rows[:1]
 	termui.Clear()
 	termui.Body.Align()
@@ -186,6 +182,11 @@ func (c *Console) toggleAddOn(addOn addons.UI) {
 	if c.activeAddOn == addOn {
 		c.removeAddOn()
 	} else {
+		if c.activeAddOn != nil {
+			c.removeAddOn()
+			// render the canvas to avoid residual shadow
+			termui.Render(termui.Body)
+		}
 		c.setAddOn(addOn)
 	}
 }
