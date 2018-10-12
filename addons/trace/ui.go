@@ -2,6 +2,7 @@ package trace
 
 import (
 	"github.com/gizak/termui"
+	"github.com/yittg/ving/addons"
 	"github.com/yittg/ving/addons/common"
 	"github.com/yittg/ving/statistic"
 )
@@ -109,8 +110,11 @@ func (tu *ui) ToggleKey() string {
 }
 
 // RespondEvents see `AddOn`
-func (tu *ui) RespondEvents() []string {
-	return []string{"n", "c"}
+func (tu *ui) RespondEvents() []addons.EventMeta {
+	return []addons.EventMeta{
+		{[]string{"n"}, "enter manually step-in mode"},
+		{[]string{"c"}, "exit manually mode"},
+	}
 }
 
 // HandleKeyEvent see `AddOn`

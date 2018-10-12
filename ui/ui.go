@@ -232,7 +232,9 @@ func (c *Console) registerAddOnEvents(systemKeys []string) {
 
 	var keys []string
 	for _, addOn := range c.addOns {
-		keys = append(keys, addOn.RespondEvents()...)
+		for _, em := range addOn.RespondEvents() {
+			keys = append(keys, em.Keys...)
+		}
 		addOn.Init()
 		if addOn.ActivateAfterStart() {
 			c.setAddOn(addOn)

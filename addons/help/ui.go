@@ -2,6 +2,7 @@ package help
 
 import (
 	"github.com/gizak/termui"
+	"github.com/yittg/ving/addons"
 	"github.com/yittg/ving/statistic"
 )
 
@@ -42,7 +43,7 @@ func (h *ui) ToggleKey() string {
 	return "h"
 }
 
-func (h *ui) RespondEvents() []string {
+func (h *ui) RespondEvents() []addons.EventMeta {
 	return nil
 }
 

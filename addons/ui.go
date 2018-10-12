@@ -23,7 +23,7 @@ type UI interface {
 	ToggleKey() string
 
 	// RespondEvents declare events can handle
-	RespondEvents() []string
+	RespondEvents() []EventMeta
 
 	// HandleKeyEvent handle key event
 	HandleKeyEvent(ev termui.Event)

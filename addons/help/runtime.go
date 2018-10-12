@@ -2,6 +2,7 @@ package help
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/yittg/ving/addons"
@@ -48,9 +49,14 @@ func (h *runtime) State() interface{} {
 		h.msg = append(h.msg, fmt.Sprintf("    [%-10s](fg-bold)    %s",
 			"q,<C-c>", "quit"))
 		h.msg = append(h.msg, "")
-		for _, addon := range addons.All {
+		for _, addOn := range addons.All {
+			addOnUI := addOn.GetUI()
 			h.msg = append(h.msg,
-				fmt.Sprintf("    [%-10s](fg-bold)    %s", addon.GetUI().ToggleKey(), addon.Desc()))
+				fmt.Sprintf("    [%-10s](fg-bold)    %s", addOnUI.ToggleKey(), addOn.Desc()))
+			for _, em := range addOnUI.RespondEvents() {
+				h.msg = append(h.msg,
+					fmt.Sprintf("    [%-10s](fg-bold)    %s", "  "+strings.Join(em.Keys, ","), em.Description))
+			}
 		}
 	}
 	return h.msg
