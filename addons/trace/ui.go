@@ -86,7 +86,7 @@ func (tu *ui) Render() *termui.Row {
 func (tu *ui) UpdateState(sts []*statistic.Detail) {
 	tu.TargetList.UpdateState(sts)
 
-	st, ok := tu.source.RenderState().(*St)
+	st, ok := tu.source.State().(*St)
 	if !ok {
 		return
 	}

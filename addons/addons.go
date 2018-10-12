@@ -1,26 +1,23 @@
 package addons
 
-import (
-	"github.com/yittg/ving/net"
-	"github.com/yittg/ving/net/protocol"
-	"github.com/yittg/ving/options"
-)
-
-// AddOn features
+// AddOn extend this utility with some useful features
+// all add-ons should implements this interface
 type AddOn interface {
 	Desc() string
 
-	Init([]*protocol.NetworkTarget, chan bool, *options.Option, *net.NPing)
+	Init(*Envoy)
 
 	Start()
 
-	Collect()
+	Stop()
 
 	Activate()
 
 	Deactivate()
 
-	RenderState() interface{}
+	Schedule()
+
+	State() interface{}
 
 	GetUI() UI
 }

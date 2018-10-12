@@ -5,9 +5,6 @@ import (
 	"sync"
 
 	"github.com/yittg/ving/addons"
-	"github.com/yittg/ving/net"
-	"github.com/yittg/ving/net/protocol"
-	"github.com/yittg/ving/options"
 )
 
 type runtime struct {
@@ -17,7 +14,7 @@ type runtime struct {
 	initUILock sync.Once
 }
 
-func NewHelp() addons.AddOn {
+func newHelp() addons.AddOn {
 	return &runtime{}
 }
 
@@ -25,13 +22,16 @@ func (h *runtime) Desc() string {
 	return "help pane"
 }
 
-func (h *runtime) Init([]*protocol.NetworkTarget, chan bool, *options.Option, *net.NPing) {
+func (h *runtime) Init(*addons.Envoy) {
 }
 
 func (h *runtime) Start() {
 }
 
-func (h *runtime) Collect() {
+func (h *runtime) Stop() {
+}
+
+func (h *runtime) Schedule() {
 }
 
 func (h *runtime) Activate() {
@@ -40,7 +40,7 @@ func (h *runtime) Activate() {
 func (h *runtime) Deactivate() {
 }
 
-func (h *runtime) RenderState() interface{} {
+func (h *runtime) State() interface{} {
 	if h.msg == nil {
 		h.msg = append(h.msg, "[Keys](fg-bold)")
 		h.msg = append(h.msg, "    [Key](fg-underline)           [Description](fg-underline)")

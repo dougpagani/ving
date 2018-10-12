@@ -59,8 +59,13 @@ func NewEngine(opt *options.Option, targets []string) (*Engine, error) {
 
 	addOns := addons.All
 	var addOnUIs []addons.UI
+	envoy := &addons.Envoy{
+		Targets: networkTargets,
+		Opt:     opt,
+		Ping:    nPing,
+	}
 	for _, addOn := range addOns {
-		addOn.Init(networkTargets, stop, opt, nPing)
+		addOn.Init(envoy)
 		addOnUIs = append(addOnUIs, addOn.GetUI())
 	}
 	return &Engine{
@@ -189,7 +194,7 @@ func (e *Engine) loop() {
 		func() {
 			e.retireRecords(t)
 			for _, addOn := range e.addOns {
-				addOn.Collect()
+				addOn.Schedule()
 			}
 			for {
 				select {

@@ -34,6 +34,7 @@ func NewTrace() addons.AddOn {
 		traceSelected: make(chan int, 1),
 		traceManually: make(chan bool, 1),
 		traceRecords:  make(chan types.Record, 10),
+		stop:          make(chan bool, 2),
 	}
 }
 
@@ -43,11 +44,10 @@ func (*runtime) Desc() string {
 }
 
 // Init see `AddOn.Init`
-func (tr *runtime) Init(targets []*protocol.NetworkTarget, stop chan bool, opt *options.Option, ping *net.NPing) {
-	tr.targets = targets
-	tr.stop = stop
-	tr.opt = opt
-	tr.ping = ping
+func (tr *runtime) Init(envoy *addons.Envoy) {
+	tr.targets = envoy.Targets
+	tr.opt = envoy.Opt
+	tr.ping = envoy.Ping
 }
 
 // Activate see `AddOn.Activate`
@@ -70,9 +70,12 @@ func (tr *runtime) GetUI() addons.UI {
 	return tr.ui
 }
 
-// Start see `types.AddOn`
 func (tr *runtime) Start() {
 	go tr.traceTarget()
+}
+
+func (tr *runtime) Stop() {
+	close(tr.stop)
 }
 
 func (tr *runtime) traceTarget() {
@@ -148,8 +151,7 @@ func (tr *runtime) doTraceTarget(header *types.RecordHeader, ttl int) int {
 	return 1
 }
 
-// Collect see `types.AddOn`
-func (tr *runtime) Collect() {
+func (tr *runtime) Schedule() {
 	for {
 		select {
 		case res := <-tr.traceRecords:
@@ -163,7 +165,6 @@ func (tr *runtime) Collect() {
 	}
 }
 
-// RenderState see `types.AddOn`
-func (tr *runtime) RenderState() interface{} {
+func (tr *runtime) State() interface{} {
 	return tr.traceResult
 }

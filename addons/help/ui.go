@@ -54,7 +54,7 @@ func (h *ui) ActivateAfterStart() bool {
 }
 
 func (h *ui) UpdateState(sts []*statistic.Detail) {
-	state, ok := h.source.RenderState().([]string)
+	state, ok := h.source.State().([]string)
 	if !ok {
 		return
 	}

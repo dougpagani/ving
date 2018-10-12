@@ -11,5 +11,5 @@ func init() {
 	predefinedPorts = append(wellKnownPorts, config.GetConfig().AddOns.Ports.Extra...)
 	sort.Sort(predefinedPorts)
 
-	addons.Register(NewPortAddOn())
+	addons.Register(newPortAddOn())
 }

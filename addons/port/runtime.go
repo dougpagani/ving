@@ -43,8 +43,7 @@ type touchResultWrapper struct {
 	res  *touchResult
 }
 
-// NewPortAddOn new port add-on
-func NewPortAddOn() addons.AddOn {
+func newPortAddOn() addons.AddOn {
 	return &runtime{
 		selected:    make(chan int, 1),
 		resultChan:  make(chan *touchResult, 1024),
@@ -52,6 +51,7 @@ func NewPortAddOn() addons.AddOn {
 		targetDone:  sync.Map{},
 		results:     make(map[int][]touchResultWrapper),
 		refreshChan: make(chan int, 1),
+		stop:        make(chan bool, 2),
 	}
 }
 
@@ -61,15 +61,14 @@ func (*runtime) Desc() string {
 }
 
 // Init ports scanner
-func (rt *runtime) Init(targets []*protocol.NetworkTarget, stop chan bool, opt *options.Option, ping *net.NPing) {
-	rt.targets = targets
-	rt.stop = stop
-	rt.opt = opt
-	rt.ping = ping
+func (rt *runtime) Init(envoy *addons.Envoy) {
+	rt.targets = envoy.Targets
+	rt.opt = envoy.Opt
+	rt.ping = envoy.Ping
 
-	if len(opt.MorePorts) > 0 {
-		customPorts := make([]types.PortDesc, 0, len(opt.MorePorts))
-		for _, p := range opt.MorePorts {
+	if len(rt.opt.MorePorts) > 0 {
+		customPorts := make([]types.PortDesc, 0, len(rt.opt.MorePorts))
+		for _, p := range rt.opt.MorePorts {
 			customPorts = append(customPorts, types.PortDesc{Name: strconv.Itoa(p), Port: p})
 		}
 		rt.targetPorts = append(customPorts, rt.targetPorts...)
@@ -77,9 +76,12 @@ func (rt *runtime) Init(targets []*protocol.NetworkTarget, stop chan bool, opt *
 	}
 }
 
-// Start ports scanner
 func (rt *runtime) Start() {
 	go rt.scanPorts()
+}
+
+func (rt *runtime) Stop() {
+	close(rt.stop)
 }
 
 func (rt *runtime) scanPorts() {
@@ -138,8 +140,7 @@ func (rt *runtime) prepareTouchResults() []touchResultWrapper {
 	return s
 }
 
-// Collect scan results
-func (rt *runtime) Collect() {
+func (rt *runtime) Schedule() {
 	updated := make(map[int]bool)
 	for {
 		select {
@@ -177,8 +178,7 @@ func (rt *runtime) Deactivate() {
 	rt.active = false
 }
 
-// RenderState return state to render
-func (rt *runtime) RenderState() interface{} {
+func (rt *runtime) State() interface{} {
 	return rt.results
 }
 

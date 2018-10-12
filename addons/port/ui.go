@@ -168,7 +168,7 @@ func (pu *ui) filtered(res *touchResult) bool {
 func (pu *ui) UpdateState(sts []*statistic.Detail) {
 	pu.TargetList.UpdateState(sts)
 
-	st, ok := pu.source.RenderState().(map[int][]touchResultWrapper)
+	st, ok := pu.source.State().(map[int][]touchResultWrapper)
 	if !ok {
 		return
 	}
