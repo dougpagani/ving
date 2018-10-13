@@ -2,7 +2,6 @@ package addons
 
 import (
 	"github.com/gizak/termui"
-	"github.com/yittg/ving/statistic"
 )
 
 // UI out of main board
@@ -32,7 +31,7 @@ type UI interface {
 	ActivateAfterStart() bool
 
 	// UpdateState update state
-	UpdateState(sts []*statistic.Detail)
+	UpdateState(activeTargets map[int]bool)
 }
 
 // ConfirmAware can handle entry event when active

@@ -4,7 +4,6 @@ import (
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/addons"
 	"github.com/yittg/ving/addons/common"
-	"github.com/yittg/ving/statistic"
 )
 
 const (
@@ -84,8 +83,8 @@ func (tu *ui) Render() *termui.Row {
 }
 
 // UpdateState see `AddOn`
-func (tu *ui) UpdateState(sts []*statistic.Detail) {
-	tu.TargetList.UpdateState(sts)
+func (tu *ui) UpdateState(actives map[int]bool) {
+	tu.TargetList.UpdateState(tu.source.rawTargets, actives)
 
 	st, ok := tu.source.State().(*St)
 	if !ok {

@@ -135,7 +135,11 @@ func (c *Console) renderSp(t time.Time) {
 
 // Render statistics
 func (c *Console) Render(t time.Time, sts []*statistic.Detail) {
+	activeTargets := make(map[int]bool, len(sts))
 	for i, st := range sts {
+		if !st.Dead {
+			activeTargets[st.ID] = true
+		}
 		if c.renderUnits[i] == nil {
 			sparklines, sparkline := c.allocatedBlock(i)
 			c.renderUnits[i] = &renderUnit{
@@ -153,7 +157,7 @@ func (c *Console) Render(t time.Time, sts []*statistic.Detail) {
 	c.renderSp(t)
 
 	if c.activeAddOn != nil {
-		c.activeAddOn.UpdateState(sts)
+		c.activeAddOn.UpdateState(activeTargets)
 	}
 
 	termui.Render(termui.Body)

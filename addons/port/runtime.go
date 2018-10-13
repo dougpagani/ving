@@ -13,11 +13,12 @@ import (
 )
 
 type runtime struct {
-	targets []*protocol.NetworkTarget
-	stop    chan bool
-	ping    *net.NPing
-	opt     *options.Option
-	active  bool
+	targets    []*protocol.NetworkTarget
+	rawTargets []string
+	stop       chan bool
+	ping       *net.NPing
+	opt        *options.Option
+	active     bool
 
 	selected    chan int
 	resultChan  chan *touchResult
@@ -65,6 +66,9 @@ func (rt *runtime) Init(envoy *addons.Envoy) {
 	rt.targets = envoy.Targets
 	rt.opt = envoy.Opt
 	rt.ping = envoy.Ping
+	for _, t := range rt.targets {
+		rt.rawTargets = append(rt.rawTargets, t.Raw)
+	}
 
 	if len(rt.opt.MorePorts) > 0 {
 		customPorts := make([]types.PortDesc, 0, len(rt.opt.MorePorts))

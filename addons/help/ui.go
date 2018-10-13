@@ -3,7 +3,6 @@ package help
 import (
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/addons"
-	"github.com/yittg/ving/statistic"
 )
 
 type ui struct {
@@ -54,7 +53,7 @@ func (h *ui) ActivateAfterStart() bool {
 	return false
 }
 
-func (h *ui) UpdateState(sts []*statistic.Detail) {
+func (h *ui) UpdateState(map[int]bool) {
 	state, ok := h.source.State().([]string)
 	if !ok {
 		return

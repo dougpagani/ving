@@ -13,11 +13,12 @@ import (
 )
 
 type runtime struct {
-	targets []*protocol.NetworkTarget
-	stop    chan bool
-	ping    *net.NPing
-	opt     *options.Option
-	active  bool
+	targets    []*protocol.NetworkTarget
+	rawTargets []string
+	stop       chan bool
+	ping       *net.NPing
+	opt        *options.Option
+	active     bool
 
 	traceSelected chan int
 	traceManually chan bool
@@ -48,6 +49,10 @@ func (tr *runtime) Init(envoy *addons.Envoy) {
 	tr.targets = envoy.Targets
 	tr.opt = envoy.Opt
 	tr.ping = envoy.Ping
+
+	for _, t := range tr.targets {
+		tr.rawTargets = append(tr.rawTargets, t.Raw)
+	}
 }
 
 // Activate see `AddOn.Activate`

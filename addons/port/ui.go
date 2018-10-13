@@ -8,7 +8,6 @@ import (
 	"github.com/yittg/ving/addons"
 	"github.com/yittg/ving/addons/common"
 	"github.com/yittg/ving/addons/port/types"
-	"github.com/yittg/ving/statistic"
 )
 
 const (
@@ -170,8 +169,8 @@ func (pu *ui) filtered(res *touchResult) bool {
 }
 
 // UpdateState of this add-on
-func (pu *ui) UpdateState(sts []*statistic.Detail) {
-	pu.TargetList.UpdateState(sts)
+func (pu *ui) UpdateState(actives map[int]bool) {
+	pu.TargetList.UpdateState(pu.source.rawTargets, actives)
 
 	st, ok := pu.source.State().(map[int][]touchResultWrapper)
 	if !ok {
