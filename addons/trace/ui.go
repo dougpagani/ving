@@ -112,8 +112,8 @@ func (tu *ui) ToggleKey() string {
 // RespondEvents see `AddOn`
 func (tu *ui) RespondEvents() []addons.EventMeta {
 	return []addons.EventMeta{
-		{[]string{"n"}, "enter manually step-in mode"},
-		{[]string{"c"}, "exit manually mode"},
+		{Keys: []string{"n"}, Description: "enter manually step-in mode"},
+		{Keys: []string{"c"}, Description: "exit manually mode"},
 	}
 }
 

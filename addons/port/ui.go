@@ -99,9 +99,9 @@ func (pu *ui) ToggleKey() string {
 // RespondEvents return all keys this add-on can handle
 func (pu *ui) RespondEvents() []addons.EventMeta {
 	return []addons.EventMeta{
-		{[]string{"v"}, "change view mode, name, port number, or both"},
-		{[]string{"r"}, "refresh and probe all ports again"},
-		{[]string{"f"}, "filter ports list, reached, unreached, or all"},
+		{Keys: []string{"v"}, Description: "change view mode, name, port number, or both"},
+		{Keys: []string{"r"}, Description: "refresh and probe all ports again"},
+		{Keys: []string{"f"}, Description: "filter ports list, reached, unreached, or all"},
 	}
 }
 

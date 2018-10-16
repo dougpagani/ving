@@ -5,17 +5,17 @@ import (
 )
 
 var wellKnownPorts = []types.PortDesc{
-	{"ssh", 22},
-	{"http", 80},
-	{"https", 443},
-	{"DNSs", 853},
-	{"docker", 2375},
-	{"etcd", 2379},
-	{"mysql", 3306},
-	{"PostgreSQL", 5432},
-	{"AMQP", 5671},
-	{"redis", 6379},
-	{"zabbix", 10050},
+	{Name: "ssh", Port: 22},
+	{Name: "http", Port: 80},
+	{Name: "https", Port: 443},
+	{Name: "DNSs", Port: 853},
+	{Name: "docker", Port: 2375},
+	{Name: "etcd", Port: 2379},
+	{Name: "mysql", Port: 3306},
+	{Name: "PostgreSQL", Port: 5432},
+	{Name: "AMQP", Port: 5671},
+	{Name: "redis", Port: 6379},
+	{Name: "zabbix", Port: 10050},
 }
 
 type sortable []types.PortDesc
