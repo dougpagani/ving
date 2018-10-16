@@ -100,6 +100,7 @@ func (e *Engine) Run() {
 	go e.loop()
 	for _, addOn := range e.addOns {
 		addOn.Start()
+		defer addOn.Stop()
 	}
 	e.console.Run(e.stop)
 }
