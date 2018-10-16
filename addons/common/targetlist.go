@@ -30,8 +30,11 @@ type TargetListOpt struct {
 	CallBackImmediate bool
 }
 
+// SelectedCallback for handler to handle the selected item
+type SelectedCallback func(int)
+
 // NewTargetList new a target list instance
-func NewTargetList(selectedCb func(int), opt *TargetListOpt) *TargetList {
+func NewTargetList(selectedCb SelectedCallback, opt *TargetListOpt) *TargetList {
 	return &TargetList{
 		selectedCb: selectedCb,
 		opt:        opt,

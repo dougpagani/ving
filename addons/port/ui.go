@@ -63,13 +63,14 @@ func (pu *ui) Render() *termui.Row {
 
 // Init the port add-on view
 func (pu *ui) Init() {
+	cb := func(selectedID int) {
+		pu.selectChan <- selectedID
+	}
 	opt := &common.TargetListOpt{
 		SelectOnMove:      pu.start,
 		CallBackImmediate: pu.start,
 	}
-	pu.TargetList = common.NewTargetList(func(selectedID int) {
-		pu.selectChan <- selectedID
-	}, opt)
+	pu.TargetList = common.NewTargetList(cb, opt)
 	pu.TargetList.Init(portsHeight)
 
 	pu.par = termui.NewPar("")
