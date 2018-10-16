@@ -8,7 +8,6 @@ var wellKnownPorts = []types.PortDesc{
 	{Name: "ssh", Port: 22},
 	{Name: "http", Port: 80},
 	{Name: "https", Port: 443},
-	{Name: "DNSs", Port: 853},
 	{Name: "docker", Port: 2375},
 	{Name: "etcd", Port: 2379},
 	{Name: "mysql", Port: 3306},

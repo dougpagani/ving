@@ -4,6 +4,7 @@
 extra = [ {name = "echo", port = 7},
           {name = "ftp transfer", port = 20},
           {name = "ftp control", port = 21},
+          {name = "DNS over TLS", port = 853},
           {name = "openVPN", port = 1194},
           {name = "docker(ssl)", port = 2376},
           {name = "etcd(inner)", port = 2380},
