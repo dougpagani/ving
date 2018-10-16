@@ -172,14 +172,8 @@ func (rt *runtime) Schedule() {
 	}
 }
 
-// Activate ports scanner add-on
-func (rt *runtime) Activate() {
-	rt.active = true
-}
-
-// Deactivate ports scanner add-on
-func (rt *runtime) Deactivate() {
-	rt.active = false
+func (rt *runtime) updateStatus(active bool) {
+	rt.active = active
 }
 
 func (rt *runtime) State() interface{} {

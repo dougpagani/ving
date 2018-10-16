@@ -82,12 +82,12 @@ func (pu *ui) Init() {
 
 // Activate this add-on
 func (pu *ui) Activate() {
-	pu.source.Activate()
+	pu.source.updateStatus(true)
 }
 
 // Deactivate this add-on
 func (pu *ui) Deactivate() {
-	pu.source.Deactivate()
+	pu.source.updateStatus(false)
 }
 
 // ToggleKey represents key to toggle

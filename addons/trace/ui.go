@@ -33,12 +33,12 @@ func newUI(tr *runtime) *ui {
 
 // Activate see `ui.Activate`
 func (tu *ui) Activate() {
-	tu.source.Activate()
+	tu.source.updateStatus(true)
 }
 
 // Deactivate see `ui.AddOn`
 func (tu *ui) Deactivate() {
-	tu.source.Deactivate()
+	tu.source.updateStatus(false)
 }
 
 // Init see `AddOn`

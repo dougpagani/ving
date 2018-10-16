@@ -35,12 +35,6 @@ func (h *runtime) Stop() {
 func (h *runtime) Schedule() {
 }
 
-func (h *runtime) Activate() {
-}
-
-func (h *runtime) Deactivate() {
-}
-
 func (h *runtime) State() interface{} {
 	if h.msg == nil {
 		h.msg = append(h.msg, "[Keys](fg-bold)")

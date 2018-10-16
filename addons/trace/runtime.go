@@ -55,14 +55,8 @@ func (tr *runtime) Init(envoy *addons.Envoy) {
 	}
 }
 
-// Activate see `AddOn.Activate`
-func (tr *runtime) Activate() {
-	tr.active = true
-}
-
-// Deactivate see `AddOn.Deactivate`
-func (tr *runtime) Deactivate() {
-	tr.active = false
+func (tr *runtime) updateStatus(active bool) {
+	tr.active = active
 }
 
 // GetUI new a runtime unit instance

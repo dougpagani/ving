@@ -11,10 +11,6 @@ type AddOn interface {
 
 	Stop()
 
-	Activate()
-
-	Deactivate()
-
 	Schedule()
 
 	State() interface{}
