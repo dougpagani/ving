@@ -17,16 +17,17 @@ const (
 
 // Console display
 type Console struct {
-	nItem       int
-	renderUnits []*renderUnit
-	colors      map[int]termui.Attribute
+	nItem  int
+	colors map[int]termui.Attribute
 
 	activeAddOn addons.UI
 	addOns      []addons.UI
 
+	maxColumnN   int
 	chartColumnN int
 	chartRowN    int
-	spGroup      []*termui.Sparklines
+	active       int
+	dead         int
 }
 
 type renderUnit struct {
@@ -37,129 +38,171 @@ type renderUnit struct {
 
 // NewConsole init console
 func NewConsole(nTargets int, addOns []addons.UI) *Console {
-	chartColumn := 1
-	chartRow := (nTargets + chartColumn - 1) / chartColumn
-	sparkLines := make([]termui.Sparkline, 0, nTargets)
+	maxColumnN := 1
+
 	rand.Seed(time.Now().Unix())
 	color := rand.Intn(termui.NumberofColors - 2)
 	colors := make(map[int]termui.Attribute, nTargets)
 	for i := 0; i < nTargets; i++ {
 		colors[i] = termui.Attribute((color+i)%(termui.NumberofColors-2) + 2)
+	}
+
+	return &Console{
+		nItem:      nTargets,
+		maxColumnN: maxColumnN,
+		colors:     colors,
+		addOns:     addOns,
+	}
+}
+
+func (c *Console) emptySpGroup() *termui.Sparklines {
+	g := termui.NewSparklines()
+	g.Border = false
+	return g
+}
+
+func (c *Console) emptyList() *termui.List {
+	l := termui.NewList()
+	l.Border = false
+	return l
+}
+
+func (c *Console) alignMainBlock(active, dead int) {
+	if c.active == active && c.dead >= dead {
+		return
+	}
+	if active == 0 {
+		c.chartColumnN = 0
+		c.chartRowN = 0
+	} else {
+		if active < c.maxColumnN {
+			c.chartColumnN = active
+		} else {
+			c.chartColumnN = c.maxColumnN
+		}
+		c.chartRowN = (active + c.chartColumnN - 1) / c.chartColumnN
+	}
+	col := c.chartColumnN
+	activeSpan, deadSpan := 12, 0
+	if dead > 0 {
+		activeSpan, deadSpan = 9, 3
+		col++
+	}
+	cols := make([]*termui.Row, 0, col)
+	for i := 0; i < c.chartColumnN; i++ {
+		cols = append(cols, termui.NewCol(activeSpan/c.chartColumnN, 0, c.emptySpGroup()))
+	}
+	if dead > 0 {
+		cols = append(cols, termui.NewCol(deadSpan, 0, c.emptyList()))
+	}
+	termui.Body.Rows[0].Cols = cols
+	termui.Clear()
+	termui.Body.Align()
+}
+
+func (c *Console) renderOneSp(sp *termui.Sparkline, width int, s *statistic.Detail) {
+	lastRecord := s.LastRecord()
+	if lastRecord == nil {
+		return
+	}
+
+	var flag string
+	rate := s.LastErrRate()
+	if rate < 0.01 {
+		flag = "🐸"
+	} else if rate < 0.1 {
+		flag = "🦁"
+	} else {
+		flag = "🙈"
+	}
+	if s.LastAverageCost() < int64(5*time.Millisecond) {
+		flag += " ⚡️"
+	}
+
+	title := fmt.Sprintf("%s %s", flag, s.Title)
+	res := fmt.Sprintf("%v #%d[#%d]", lastRecord.View(), s.Total, s.ErrCount)
+	textLen := width - 1
+	format := fmt.Sprintf("%%-%ds%%%dv", textLen/2, textLen-textLen/2-1)
+	sp.Title = fmt.Sprintf(format, title, res)
+	sp.Data = s.Cost
+	sp.LineColor = c.colors[s.ID]
+	// log.Panicf("%+v %+v", sp, width)
+	s.ResizeViewWindow(width - 1)
+}
+
+func (c *Console) adjustSpGroup(group *termui.Sparklines, unitSize int) {
+	crtSize := len(group.Lines)
+	if crtSize > unitSize {
+		group.Lines = group.Lines[:unitSize]
+		return
+	}
+	for i := crtSize; i < unitSize; i++ {
 		sp := termui.Sparkline{}
 		sp.Height = chartHeight
 		sp.Title = "*"
 		sp.TitleColor = termui.ColorWhite
-		sparkLines = append(sparkLines, sp)
-	}
-
-	groups := make([]*termui.Sparklines, 0, chartColumn)
-	for i := 0; i < chartColumn; i++ {
-		var members []termui.Sparkline
-		if i == chartColumn-1 {
-			members = sparkLines[i*chartRow:]
-		} else {
-			members = sparkLines[i*chartRow : (i+1)*chartRow]
-		}
-
-		g := termui.NewSparklines(members...)
-		g.Height = chartRow*(chartHeight+1) + 1
-		g.Border = false
-		groups = append(groups, g)
-	}
-
-	return &Console{
-		spGroup:      groups,
-		nItem:        nTargets,
-		chartColumnN: chartColumn,
-		chartRowN:    chartRow,
-		colors:       colors,
-		renderUnits:  make([]*renderUnit, nTargets),
-		addOns:       addOns,
+		group.Lines = append(group.Lines, sp)
 	}
 }
 
-func (c *Console) resizeSpGroup() {
-	for _, s := range c.renderUnits {
-		s.statistic.ResizeViewWindow(c.dataLen(s))
+func (c *Console) renderOneSpGroup(ord int, unit []*statistic.Detail) {
+	group := termui.Body.Rows[0].Cols[ord].Widget.(*termui.Sparklines)
+	c.adjustSpGroup(group, len(unit))
+	height := 1
+	for i := range group.Lines {
+		sp := &(group.Lines[i])
+		height += sp.Height + 1
+		c.renderOneSp(sp, group.Width, unit[i])
 	}
+	group.Height = height
 }
 
-func (c *Console) renderSp(t time.Time) {
-	for _, g := range c.spGroup {
-		g.Height = c.chartRowN*(chartHeight+1) + 1
+func (c *Console) renderDeads(ord int, deads []*statistic.Detail) {
+	list := termui.Body.Rows[0].Cols[ord].Widget.(*termui.List)
+	var items []string
+	for _, dead := range deads {
+		items = append(items,
+			fmt.Sprintf("❌ [%s](fg-bold)", dead.Title),
+			fmt.Sprintf(" %s", dead.LastRecord().View()))
 	}
-	for _, ru := range c.renderUnits {
-		if ru == nil {
-			continue
-		}
-		s := ru.statistic
-		if s == nil {
-			continue
-		}
-		lastRecord := s.LastRecord()
-		if lastRecord == nil {
-			continue
-		}
-
-		var flag string
-		if s.Dead {
-			flag = "❌"
-		} else {
-			rate := s.LastErrRate()
-			if rate < 0.01 {
-				flag = "🐸"
-			} else if rate < 0.1 {
-				flag = "🦁"
-			} else {
-				flag = "🙈"
-			}
-			if s.LastAverageCost() < int64(5*time.Millisecond) {
-				flag += " ⚡️"
-			}
-		}
-
-		title := fmt.Sprintf("%s %s", flag, s.Title)
-		res := fmt.Sprintf("%v #%d[#%d]", lastRecord.View(), s.Total, s.ErrCount)
-		textLen := c.dataLen(ru)
-		format := fmt.Sprintf("%%-%ds%%%dv", textLen/2, textLen-textLen/2-1)
-		ru.block.Title = fmt.Sprintf(format, title, res)
-		ru.block.Data = s.Cost
-		if s.Dead {
-			ru.block.Height = 0
-			ru.group.Height -= chartHeight
-		} else {
-			ru.block.Height = chartHeight
-		}
-	}
+	list.Items = items
+	list.Height = len(items)
 }
 
 // Render statistics
 func (c *Console) Render(t time.Time, sts []*statistic.Detail) {
-	activeTargets := make(map[int]bool, len(sts))
-	for i, st := range sts {
-		if !st.Dead {
-			activeTargets[st.ID] = true
-		}
-		if c.renderUnits[i] == nil {
-			sparklines, sparkline := c.allocatedBlock(i)
-			c.renderUnits[i] = &renderUnit{
-				statistic: st,
-				group:     sparklines,
-				block:     sparkline,
-			}
-		} else {
-			c.renderUnits[i].statistic = st
-		}
-		c.renderUnits[i].block.LineColor = c.colors[st.ID]
-		st.ResizeViewWindow(c.dataLen(c.renderUnits[i]))
-	}
+	total := len(sts)
 
-	c.renderSp(t)
+	activeTargetSet := make(map[int]bool)
+	var activeTargets []*statistic.Detail
+	var deads []*statistic.Detail
+	for _, st := range sts {
+		if st.Dead {
+			deads = append(deads, st)
+			continue
+		}
+		activeTargetSet[st.ID] = true
+		activeTargets = append(activeTargets, st)
+	}
+	activeTotal := len(activeTargets)
+	c.alignMainBlock(activeTotal, total-activeTotal)
+	ord := 0
+	for i := 0; i < activeTotal; i += c.chartRowN {
+		if i+c.chartColumnN >= activeTotal {
+			c.renderOneSpGroup(ord, activeTargets[i:])
+		} else {
+			c.renderOneSpGroup(ord, activeTargets[i:i+c.chartRowN])
+		}
+		ord++
+	}
+	if len(deads) > 0 {
+		c.renderDeads(ord, deads)
+	}
 
 	if c.activeAddOn != nil {
-		c.activeAddOn.UpdateState(activeTargets)
+		c.activeAddOn.UpdateState(activeTargetSet)
 	}
-
+	termui.Body.Align()
 	termui.Render(termui.Body)
 }
 
@@ -193,18 +236,6 @@ func (c *Console) toggleAddOn(addOn addons.UI) {
 		}
 		c.setAddOn(addOn)
 	}
-}
-
-func (c *Console) dataLen(ru *renderUnit) int {
-	return ru.group.Width - 1
-}
-
-func (c *Console) allocatedBlock(idx int) (*termui.Sparklines, *termui.Sparkline) {
-	groupID := idx / c.chartRowN
-	subID := idx % c.chartRowN
-	group := termui.Body.Rows[0].Cols[groupID].Widget.(*termui.Sparklines)
-	sp := &(group.Lines[subID])
-	return group, sp
 }
 
 func (c *Console) registerAddOnEvents(systemKeys []string) {
@@ -267,13 +298,8 @@ func (c *Console) Run(stopChan chan bool) {
 	}
 	defer termui.Close()
 
-	groupCols := make([]*termui.Row, 0, len(c.spGroup))
-	for _, g := range c.spGroup {
-		groupCols = append(groupCols, termui.NewCol(12/c.chartColumnN, 0, g))
-	}
-
 	termui.Body.AddRows(
-		termui.NewRow(groupCols...),
+		termui.NewRow(),
 	)
 	termui.Body.Align()
 
@@ -286,7 +312,6 @@ func (c *Console) Run(stopChan chan bool) {
 		termui.Body.Width = termui.TermWidth()
 		termui.Body.Align()
 		termui.Clear()
-		c.resizeSpGroup()
 		termui.Render(termui.Body)
 	})
 	c.registerAddOnEvents(systemKeys)
