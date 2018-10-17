@@ -1,3 +1,6 @@
+[ui]
+max-row = 4
+
 [add-ons]
 
 [add-ons.ports]

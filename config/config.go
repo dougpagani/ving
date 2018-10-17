@@ -12,6 +12,12 @@ var searchDir = []string{".", os.Getenv("HOME")}
 // Config custom
 type Config struct {
 	AddOns AddOnConfig `toml:"add-ons"`
+	UI     UIConfig
+}
+
+// UIConfig for custom chart board
+type UIConfig struct {
+	MaxRow int `toml:"max-row"`
 }
 
 // AddOnConfig add on configs
@@ -27,6 +33,7 @@ func GetConfig() *Config {
 }
 
 func init() {
+	customConfig.UI.MaxRow = 4
 	for _, rcDir := range searchDir {
 		rcFile := rcDir + "/.ving.toml"
 		if _, err := os.Stat(rcFile); os.IsNotExist(err) {

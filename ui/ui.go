@@ -7,6 +7,7 @@ import (
 
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/addons"
+	"github.com/yittg/ving/config"
 	"github.com/yittg/ving/statistic"
 	"github.com/yittg/ving/utils/slices"
 )
@@ -22,7 +23,7 @@ type Console struct {
 	activeAddOn addons.UI
 	addOns      []addons.UI
 
-	maxColumnN   int
+	maxRowN      int
 	chartColumnN int
 	chartRowN    int
 	active       int
@@ -31,12 +32,12 @@ type Console struct {
 
 // NewConsole init console
 func NewConsole(addOns []addons.UI) *Console {
-	maxColumnN := 1
+	maxRowN := config.GetConfig().UI.MaxRow
 	rand.Seed(time.Now().Unix())
 	return &Console{
-		maxColumnN: maxColumnN,
-		colorSeed:  rand.Intn(termui.NumberofColors - 2),
-		addOns:     addOns,
+		maxRowN:   maxRowN,
+		colorSeed: rand.Intn(termui.NumberofColors - 2),
+		addOns:    addOns,
 	}
 }
 
@@ -64,12 +65,12 @@ func (c *Console) alignMainBlock(active, dead int) {
 		c.chartColumnN = 0
 		c.chartRowN = 0
 	} else {
-		if active < c.maxColumnN {
-			c.chartColumnN = active
+		if active < c.maxRowN {
+			c.chartRowN = active
 		} else {
-			c.chartColumnN = c.maxColumnN
+			c.chartRowN = c.maxRowN
 		}
-		c.chartRowN = (active + c.chartColumnN - 1) / c.chartColumnN
+		c.chartColumnN = (active + c.chartRowN - 1) / c.chartRowN
 	}
 	col := c.chartColumnN
 	activeSpan, deadSpan := 12, 0
@@ -176,7 +177,7 @@ func (c *Console) Render(t time.Time, sts []*statistic.Detail) {
 	c.alignMainBlock(activeTotal, total-activeTotal)
 	ord := 0
 	for i := 0; i < activeTotal; i += c.chartRowN {
-		if i+c.chartColumnN >= activeTotal {
+		if i+c.chartRowN >= activeTotal {
 			c.renderOneSpGroup(ord, activeTargets[i:])
 		} else {
 			c.renderOneSpGroup(ord, activeTargets[i:i+c.chartRowN])
