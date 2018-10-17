@@ -77,7 +77,7 @@ func NewEngine(opt *options.Option, targets []string) (*Engine, error) {
 		records:   records,
 
 		addOns:  addOns,
-		console: ui.NewConsole(nTargets, addOnUIs),
+		console: ui.NewConsole(addOnUIs),
 
 		stop: stop,
 	}, nil

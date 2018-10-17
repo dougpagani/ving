@@ -17,8 +17,7 @@ const (
 
 // Console display
 type Console struct {
-	nItem  int
-	colors map[int]termui.Attribute
+	colorSeed int
 
 	activeAddOn addons.UI
 	addOns      []addons.UI
@@ -31,22 +30,18 @@ type Console struct {
 }
 
 // NewConsole init console
-func NewConsole(nTargets int, addOns []addons.UI) *Console {
+func NewConsole(addOns []addons.UI) *Console {
 	maxColumnN := 1
-
 	rand.Seed(time.Now().Unix())
-	color := rand.Intn(termui.NumberofColors - 2)
-	colors := make(map[int]termui.Attribute, nTargets)
-	for i := 0; i < nTargets; i++ {
-		colors[i] = termui.Attribute((color+i)%(termui.NumberofColors-2) + 2)
-	}
-
 	return &Console{
-		nItem:      nTargets,
 		maxColumnN: maxColumnN,
-		colors:     colors,
+		colorSeed:  rand.Intn(termui.NumberofColors - 2),
 		addOns:     addOns,
 	}
+}
+
+func (c *Console) color(id int) termui.Attribute {
+	return termui.Attribute((c.colorSeed+id)%(termui.NumberofColors-2) + 2)
 }
 
 func (c *Console) emptySpGroup() *termui.Sparklines {
@@ -119,7 +114,7 @@ func (c *Console) renderOneSp(sp *termui.Sparkline, width int, s *statistic.Deta
 	format := fmt.Sprintf("%%-%ds%%%dv", textLen/2, textLen-textLen/2-1)
 	sp.Title = fmt.Sprintf(format, title, res)
 	sp.Data = s.Cost
-	sp.LineColor = c.colors[s.ID]
+	sp.LineColor = c.color(s.ID)
 	s.ResizeViewWindow(width - 1)
 }
 
