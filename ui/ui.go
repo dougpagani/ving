@@ -30,12 +30,6 @@ type Console struct {
 	dead         int
 }
 
-type renderUnit struct {
-	statistic *statistic.Detail
-	block     *termui.Sparkline
-	group     *termui.Sparklines
-}
-
 // NewConsole init console
 func NewConsole(nTargets int, addOns []addons.UI) *Console {
 	maxColumnN := 1
@@ -126,7 +120,6 @@ func (c *Console) renderOneSp(sp *termui.Sparkline, width int, s *statistic.Deta
 	sp.Title = fmt.Sprintf(format, title, res)
 	sp.Data = s.Cost
 	sp.LineColor = c.colors[s.ID]
-	// log.Panicf("%+v %+v", sp, width)
 	s.ResizeViewWindow(width - 1)
 }
 
@@ -316,11 +309,4 @@ func (c *Console) Run(stopChan chan bool) {
 	})
 	c.registerAddOnEvents(systemKeys)
 	termui.Loop()
-}
-
-// EventHandler for register handler for event key
-type EventHandler struct {
-	Key          string
-	EmitAfterRun bool
-	Handler      func()
 }
