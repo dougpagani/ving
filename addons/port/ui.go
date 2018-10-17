@@ -147,7 +147,7 @@ func (pu *ui) buildPortView(p types.PortDesc) string {
 	case viewPort:
 		return strconv.Itoa(p.Port)
 	case viewAll:
-		if strings.Index(p.Name, strconv.Itoa(p.Port)) >= 0 {
+		if strings.Contains(p.Name, strconv.Itoa(p.Port)) {
 			return p.Name
 		}
 		return p.Name + ":" + strconv.Itoa(p.Port)

@@ -38,7 +38,7 @@ func NewTargetList(selectedCb SelectedCallback, opt *TargetListOpt) *TargetList 
 	return &TargetList{
 		selectedCb: selectedCb,
 		opt:        opt,
-		idxMap:     make(map[int]int, 0),
+		idxMap:     make(map[int]int),
 		selectID:   opt.InitSelected,
 		lastCbID:   -1,
 	}
