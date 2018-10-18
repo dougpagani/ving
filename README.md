@@ -9,6 +9,8 @@ like trace, ports probe, and more yet to be implemented, 😝.
 
 Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 
+![](_assets/record.gif)
+
 # 🦁 Features
 
 * ping multiple targets concurrently and independently;
@@ -57,10 +59,3 @@ $ ving 8.8.8.8 -P 1-1024
 
 $ ving --help
 ```
-
-_A demo animation that demonstrates most of the functionality,
-although not perfectly rendered (see screenshot for actual rendering),
-thanks to [terminalizer](https://github.com/faressoft/terminalizer)._
-
-![](_assets/record.gif)
-
