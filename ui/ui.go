@@ -28,6 +28,7 @@ type Console struct {
 	chartRowN    int
 	active       int
 	dead         int
+	collapseDead bool
 }
 
 // NewConsole init console
@@ -75,7 +76,12 @@ func (c *Console) alignMainBlock(active, dead int) {
 	col := c.chartColumnN
 	activeSpan, deadSpan := 12, 0
 	if dead > 0 {
-		activeSpan, deadSpan = 9, 3
+		if c.collapseDead {
+			deadSpan = 1
+		} else {
+			deadSpan = 3
+		}
+		activeSpan = 12 - deadSpan
 		col++
 	}
 	cols := make([]*termui.Row, 0, col)
@@ -148,11 +154,18 @@ func (c *Console) renderOneSpGroup(ord int, unit []*statistic.Detail) {
 
 func (c *Console) renderDeads(ord int, deads []*statistic.Detail) {
 	list := termui.Body.Rows[0].Cols[ord].Widget.(*termui.List)
+
 	var items []string
-	for _, dead := range deads {
-		items = append(items,
-			fmt.Sprintf("❌ [%s](fg-bold)", dead.Title),
-			fmt.Sprintf(" %s", dead.LastRecord().View()))
+	if c.collapseDead {
+		item := fmt.Sprintf("❌ #%d", len(deads))
+		format := fmt.Sprintf("%%%ds", list.Width-2)
+		items = []string{fmt.Sprintf(format, item)}
+	} else {
+		for _, dead := range deads {
+			items = append(items,
+				fmt.Sprintf("❌ [%s](fg-bold)", dead.Title),
+				fmt.Sprintf(" %s", dead.LastRecord().View()))
+		}
 	}
 	list.Items = items
 	list.Height = len(items)
@@ -296,6 +309,9 @@ func (c *Console) Run(stopChan chan bool) {
 	termui.Handle("q", "<C-c>", func(termui.Event) {
 		close(stopChan)
 		termui.StopLoop()
+	})
+	termui.Handle("E", func(termui.Event) {
+		c.collapseDead = !c.collapseDead
 	})
 	termui.Handle("<Resize>", func(termui.Event) {
 		termui.Body.Width = termui.TermWidth()
