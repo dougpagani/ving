@@ -63,6 +63,7 @@ func (c *Console) alignMainBlock(active, dead int) {
 	if c.active == active && c.dead >= dead {
 		return
 	}
+	c.active, c.dead = active, dead
 	if active == 0 {
 		c.chartColumnN = 0
 		c.chartRowN = 0
