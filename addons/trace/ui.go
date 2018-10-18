@@ -2,8 +2,8 @@ package trace
 
 import (
 	"github.com/gizak/termui"
-	"github.com/yittg/ving/addons"
 	"github.com/yittg/ving/addons/common"
+	"github.com/yittg/ving/types"
 )
 
 const (
@@ -110,8 +110,8 @@ func (tu *ui) ToggleKey() string {
 }
 
 // RespondEvents see `AddOn`
-func (tu *ui) RespondEvents() []addons.EventMeta {
-	return []addons.EventMeta{
+func (tu *ui) RespondEvents() []types.EventMeta {
+	return []types.EventMeta{
 		{Keys: []string{"n"}, Description: "enter manually step-in mode"},
 		{Keys: []string{"c"}, Description: "exit manually mode"},
 	}

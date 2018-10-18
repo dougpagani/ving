@@ -2,6 +2,7 @@ package addons
 
 import (
 	"github.com/gizak/termui"
+	"github.com/yittg/ving/types"
 )
 
 // UI out of main board
@@ -22,7 +23,7 @@ type UI interface {
 	ToggleKey() string
 
 	// RespondEvents declare events can handle
-	RespondEvents() []EventMeta
+	RespondEvents() []types.EventMeta
 
 	// HandleKeyEvent handle key event
 	HandleKeyEvent(ev termui.Event)

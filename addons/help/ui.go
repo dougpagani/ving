@@ -2,7 +2,7 @@ package help
 
 import (
 	"github.com/gizak/termui"
-	"github.com/yittg/ving/addons"
+	"github.com/yittg/ving/types"
 )
 
 type ui struct {
@@ -42,7 +42,7 @@ func (h *ui) ToggleKey() string {
 	return "h"
 }
 
-func (h *ui) RespondEvents() []addons.EventMeta {
+func (h *ui) RespondEvents() []types.EventMeta {
 	return nil
 }
 

@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/gizak/termui"
-	"github.com/yittg/ving/addons"
 	"github.com/yittg/ving/addons/common"
 	"github.com/yittg/ving/addons/port/types"
+	et "github.com/yittg/ving/types"
 )
 
 const (
@@ -97,8 +97,8 @@ func (pu *ui) ToggleKey() string {
 }
 
 // RespondEvents return all keys this add-on can handle
-func (pu *ui) RespondEvents() []addons.EventMeta {
-	return []addons.EventMeta{
+func (pu *ui) RespondEvents() []et.EventMeta {
+	return []et.EventMeta{
 		{Keys: []string{"v"}, Description: "change view mode, name, port number, or both"},
 		{Keys: []string{"r"}, Description: "refresh and probe all ports again"},
 		{Keys: []string{"f"}, Description: "filter ports list, reached, unreached, or all"},

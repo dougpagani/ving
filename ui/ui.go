@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"github.com/yittg/ving/types"
 	"math/rand"
 	"time"
 
@@ -293,6 +294,30 @@ func (c *Console) registerAddOnEvents(systemKeys []string) {
 	}
 }
 
+func (c *Console) prepareGlobalKeys(stopChan chan bool) (systemKeys []string) {
+	quitKey := types.EventMeta{
+		Keys:        []string{"q", "<C-c>"},
+		Description: "quit",
+	}
+	systemKeys = append(systemKeys, quitKey.Keys...)
+	GlobalKeys = append(GlobalKeys, quitKey)
+	termui.Handle(quitKey.Keys, func(termui.Event) {
+		close(stopChan)
+		termui.StopLoop()
+	})
+
+	collapseDeadKey := types.EventMeta{
+		Keys:        []string{"E"},
+		Description: "collapse dead targets if exist",
+	}
+	systemKeys = append(systemKeys, collapseDeadKey.Keys...)
+	GlobalKeys = append(GlobalKeys, collapseDeadKey)
+	termui.Handle(collapseDeadKey.Keys, func(termui.Event) {
+		c.collapseDead = !c.collapseDead
+	})
+	return
+}
+
 // Run a spark line ui
 func (c *Console) Run(stopChan chan bool) {
 	if err := termui.Init(); err != nil {
@@ -304,15 +329,7 @@ func (c *Console) Run(stopChan chan bool) {
 		termui.NewRow(),
 	)
 	termui.Body.Align()
-
-	systemKeys := []string{"q"}
-	termui.Handle("q", "<C-c>", func(termui.Event) {
-		close(stopChan)
-		termui.StopLoop()
-	})
-	termui.Handle("E", func(termui.Event) {
-		c.collapseDead = !c.collapseDead
-	})
+	systemKeys := c.prepareGlobalKeys(stopChan)
 	termui.Handle("<Resize>", func(termui.Event) {
 		termui.Body.Width = termui.TermWidth()
 		termui.Body.Align()
@@ -322,3 +339,6 @@ func (c *Console) Run(stopChan chan bool) {
 	c.registerAddOnEvents(systemKeys)
 	termui.Loop()
 }
+
+// GlobalKeys represents system global keys
+var GlobalKeys []types.EventMeta

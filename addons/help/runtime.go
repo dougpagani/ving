@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/yittg/ving/addons"
+	gui "github.com/yittg/ving/ui"
 )
 
 type runtime struct {
@@ -40,16 +41,18 @@ func (h *runtime) State() interface{} {
 		h.msg = append(h.msg, "[Keys](fg-bold)")
 		h.msg = append(h.msg, "    [Key](fg-underline)           [Description](fg-underline)")
 
-		h.msg = append(h.msg, fmt.Sprintf("    [%-10s](fg-bold)    %s",
-			"q,<C-c>", "quit"))
+		for _, gk := range gui.GlobalKeys {
+			h.msg = append(h.msg, fmt.Sprintf("    [%-10s](fg-bold)    %s",
+				strings.Join(gk.Keys, ","), gk.Description))
+		}
 		h.msg = append(h.msg, "")
 		for _, addOn := range addons.All {
 			addOnUI := addOn.GetUI()
 			h.msg = append(h.msg,
 				fmt.Sprintf("    [%-10s](fg-bold)    %s", addOnUI.ToggleKey(), addOn.Desc()))
 			for _, em := range addOnUI.RespondEvents() {
-				h.msg = append(h.msg,
-					fmt.Sprintf("    [%-10s](fg-bold)    %s", "  "+strings.Join(em.Keys, ","), em.Description))
+				h.msg = append(h.msg, fmt.Sprintf("    [%-10s](fg-bold)    %s",
+					"  "+strings.Join(em.Keys, ","), em.Description))
 			}
 		}
 	}
