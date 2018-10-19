@@ -25,21 +25,25 @@ type AddOnConfig struct {
 	Ports ports.PortsConfig
 }
 
-var customConfig Config
+var customConfig *Config
 
 // GetConfig get custom config
 func GetConfig() *Config {
-	return &customConfig
+	return customConfig
 }
 
 func init() {
-	customConfig.UI.MaxRow = 4
+	customConfig = &Config{
+		UI: UIConfig{
+			MaxRow: 4,
+		},
+	}
 	for _, rcDir := range searchDir {
 		rcFile := rcDir + "/.ving.toml"
 		if _, err := os.Stat(rcFile); os.IsNotExist(err) {
 			continue
 		}
-		if _, err := toml.DecodeFile(rcFile, &customConfig); err != nil {
+		if _, err := toml.DecodeFile(rcFile, customConfig); err != nil {
 			panic(err)
 		}
 		return

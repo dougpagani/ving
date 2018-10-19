@@ -1,0 +1,23 @@
+# ving configuration file example.
+#
+# ving will search `.ving.toml` in current working directory, or `${HOME}` secondly,
+# so generally put you custom configuration file into `${HOME}`.
+#
+# the following examples show configurations ving provided.
+
+# [ui]
+# max-row = 4
+
+# [add-ons]
+#
+# [add-ons.ports]
+# extra = [ {name = "echo", port = 7},
+#           {name = "ftp transfer", port = 20},
+#           {name = "ftp control", port = 21},
+#           {name = "DNS over TLS", port = 853},
+#           {name = "openVPN", port = 1194},
+#           {name = "docker(ssl)", port = 2376},
+#           {name = "etcd(inner)", port = 2380},
+#           {name = "http(8008)", port = 8008},
+#           {name = "http(8080)", port = 8080} ]
+
