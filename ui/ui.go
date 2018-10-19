@@ -314,6 +314,7 @@ func (c *Console) prepareGlobalKeys(stopChan chan bool) (systemKeys []string) {
 	systemKeys = append(systemKeys, collapseDeadKey.Keys...)
 	GlobalKeys = append(GlobalKeys, collapseDeadKey)
 	termui.Handle(collapseDeadKey.Keys, func(termui.Event) {
+		c.dead = 0 // trigger re-align main block
 		c.collapseDead = !c.collapseDead
 	})
 	return
