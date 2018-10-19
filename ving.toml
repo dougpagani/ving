@@ -6,7 +6,11 @@
 # the following examples show configurations ving provided.
 
 # [ui]
+### max rows to display targets ping chart
 # max-row = 4
+#
+### height of a single display
+# sp-height = 3
 
 # [add-ons]
 #
