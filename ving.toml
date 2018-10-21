@@ -7,10 +7,11 @@
 
 # [ui]
 ### max rows to display targets ping chart
-# max-row = 4
+# max-chart-row = 4
 #
-### height of a single display
-# sp-height = 3
+### height of a single chart display
+# chart-height = 3
+
 
 # [statistic]
 ### error reate threshold of statistic
