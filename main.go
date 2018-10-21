@@ -8,13 +8,14 @@ import (
 	_ "github.com/yittg/ving/config"
 	"github.com/yittg/ving/core"
 	"github.com/yittg/ving/options"
+	"github.com/yittg/ving/version"
 )
 
 func main() {
 	opt := options.Option{}
 	targets := options.ParseCommandLine(&opt)
 	if opt.ShowVersion {
-		printVersion()
+		version.PrintVersion()
 		os.Exit(0)
 	}
 

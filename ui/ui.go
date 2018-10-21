@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"github.com/yittg/ving/types"
 	"math/rand"
 	"time"
 
@@ -10,11 +9,8 @@ import (
 	"github.com/yittg/ving/addons"
 	"github.com/yittg/ving/config"
 	"github.com/yittg/ving/statistic"
+	"github.com/yittg/ving/types"
 	"github.com/yittg/ving/utils/slices"
-)
-
-const (
-	chartHeight = 3
 )
 
 // Console display
@@ -24,22 +20,25 @@ type Console struct {
 	activeAddOn addons.UI
 	addOns      []addons.UI
 
-	maxRowN      int
 	chartColumnN int
 	chartRowN    int
 	active       int
 	dead         int
 	collapseDead bool
+
+	maxRowN         int
+	sparklineHeight int
 }
 
 // NewConsole init console
 func NewConsole(addOns []addons.UI) *Console {
-	maxRowN := config.GetConfig().UI.MaxRow
+	uiConfig := config.GetConfig().UI
 	rand.Seed(time.Now().Unix())
 	return &Console{
-		maxRowN:   maxRowN,
-		colorSeed: rand.Intn(termui.NumberofColors - 2),
-		addOns:    addOns,
+		colorSeed:       rand.Intn(termui.NumberofColors - 2),
+		addOns:          addOns,
+		maxRowN:         uiConfig.MaxRow,
+		sparklineHeight: uiConfig.SparklineHeight,
 	}
 }
 
@@ -104,16 +103,14 @@ func (c *Console) renderOneSp(sp *termui.Sparkline, width int, s *statistic.Deta
 		return
 	}
 
-	var flag string
-	rate := s.LastErrRate()
-	if rate < 0.01 {
-		flag = "🐸"
-	} else if rate < 0.1 {
-		flag = "🦁"
-	} else {
-		flag = "🙈"
+	errRateFlag := []string{"🐸", "🦁", "🙈"}
+	maxLevel := len(errRateFlag) - 1
+	errRateLevel := s.LastErrRateLevel()
+	if errRateLevel > maxLevel {
+		errRateLevel = maxLevel
 	}
-	if s.LastAverageCost() < int64(5*time.Millisecond) {
+	flag := errRateFlag[errRateLevel]
+	if s.LastStatisticLatencyLow() {
 		flag += " ⚡️"
 	}
 
@@ -135,7 +132,7 @@ func (c *Console) adjustSpGroup(group *termui.Sparklines, unitSize int) {
 	}
 	for i := crtSize; i < unitSize; i++ {
 		sp := termui.Sparkline{}
-		sp.Height = chartHeight
+		sp.Height = c.sparklineHeight
 		sp.Title = "*"
 		sp.TitleColor = termui.ColorWhite
 		group.Lines = append(group.Lines, sp)
@@ -314,6 +311,7 @@ func (c *Console) prepareGlobalKeys(stopChan chan bool) (systemKeys []string) {
 	systemKeys = append(systemKeys, collapseDeadKey.Keys...)
 	GlobalKeys = append(GlobalKeys, collapseDeadKey)
 	termui.Handle(collapseDeadKey.Keys, func(termui.Event) {
+		c.dead = 0 // trigger re-align main block
 		c.collapseDead = !c.collapseDead
 	})
 	return

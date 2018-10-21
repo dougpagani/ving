@@ -41,6 +41,9 @@ Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 
 ```
 $ go get -u github.com/yittg/ving
+
+# install version in development
+$ go get -u github.com/yittg/ving@develop
 ```
 
 > __Notes__ for linux users, run `ving` with `sudo` or `setcap` in advance, 

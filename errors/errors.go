@@ -23,3 +23,12 @@ type ErrInvalidPort struct {
 func (*ErrInvalidPort) Error() string {
 	return "invalid port"
 }
+
+// ConfigError for configuration validate failed
+type ConfigError struct {
+	Msg string
+}
+
+func (e *ConfigError) Error() string {
+	return "configuration validate failed: " + e.Msg
+}
