@@ -6,6 +6,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	ports "github.com/yittg/ving/addons/port/types"
+	statistic "github.com/yittg/ving/statistic/config"
 	ui "github.com/yittg/ving/ui/config"
 )
 
@@ -13,8 +14,9 @@ var searchDir = []string{".", os.Getenv("HOME")}
 
 // Config custom
 type Config struct {
-	AddOns AddOnConfig `toml:"add-ons"`
-	UI     ui.UIConfig
+	AddOns    AddOnConfig `toml:"add-ons"`
+	UI        ui.UIConfig
+	Statistic statistic.Config
 }
 
 // AddOnConfig add on configs
@@ -33,12 +35,16 @@ func validate() error {
 	if err := customConfig.UI.Validate(); err != nil {
 		return err
 	}
+	if err := customConfig.Statistic.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func init() {
 	customConfig = &Config{
-		UI: ui.Default(),
+		UI:        ui.Default(),
+		Statistic: statistic.Default(),
 	}
 	for _, rcDir := range searchDir {
 		rcFile := rcDir + "/.ving.toml"

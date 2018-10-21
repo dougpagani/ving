@@ -5,11 +5,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yittg/ving/config"
 	"github.com/yittg/ving/types"
 )
 
-const (
-	errStatisticWindow = 10 * time.Second
+var (
+	statisticConfig    = config.GetConfig().Statistic
+	errStatisticWindow = statisticConfig.Window.Value
 )
 
 // Detail provide ability for statistic
@@ -86,6 +88,17 @@ func (s *Detail) LastErrorRecord() *ErrorRecordAt {
 // LastErrRate represents latest error rate in window
 func (s *Detail) LastErrRate() float64 {
 	return float64(s.lastNIterErrCount) / float64(len(s.lastNIterRecord))
+}
+
+// LastErrRateLevel represents the level of last error rate
+func (s *Detail) LastErrRateLevel() int {
+	r := s.LastErrRate()
+	for level, thresh := range statisticConfig.ErrorRateThresh {
+		if r < thresh {
+			return level
+		}
+	}
+	return len(statisticConfig.ErrorRateThresh)
 }
 
 // LastAverageCost represents latest speed in window

@@ -103,15 +103,13 @@ func (c *Console) renderOneSp(sp *termui.Sparkline, width int, s *statistic.Deta
 		return
 	}
 
-	var flag string
-	rate := s.LastErrRate()
-	if rate < 0.01 {
-		flag = "🐸"
-	} else if rate < 0.1 {
-		flag = "🦁"
-	} else {
-		flag = "🙈"
+	errRateFlag := []string{"🐸", "🦁", "🙈"}
+	maxLevel := len(errRateFlag) - 1
+	errRateLevel := s.LastErrRateLevel()
+	if errRateLevel > maxLevel {
+		errRateLevel = maxLevel
 	}
+	flag := errRateFlag[errRateLevel]
 	if s.LastAverageCost() < int64(5*time.Millisecond) {
 		flag += " ⚡️"
 	}

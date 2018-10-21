@@ -8,6 +8,7 @@ import (
 	"time"
 
 	flag "github.com/spf13/pflag"
+	"github.com/yittg/ving/config"
 	"github.com/yittg/ving/errors"
 	"github.com/yittg/ving/utils/slices"
 )
@@ -34,6 +35,11 @@ type Option struct {
 	Sort bool
 
 	ShowVersion bool
+}
+
+func (o *Option) interalValid() bool {
+	statisticWindow := config.GetConfig().Statistic.Window.Value
+	return o.Interval >= 10*time.Millisecond && o.Interval < statisticWindow
 }
 
 func allPortNumber(strs ...string) ([]int, error) {
@@ -77,7 +83,7 @@ func (o *Option) portsValid() bool {
 }
 
 func (o *Option) isValid() bool {
-	return o.Interval >= 10*time.Millisecond &&
+	return o.interalValid() &&
 		o.Timeout >= 10*time.Millisecond &&
 		o.portsValid()
 }
@@ -85,7 +91,8 @@ func (o *Option) isValid() bool {
 // ParseCommandLine results options and targets
 func ParseCommandLine(opt *Option) []string {
 	flag.Usage = printUsage
-	flag.DurationVarP(&opt.Interval, "interval", "i", time.Second, "ping interval, must >=10ms")
+	flag.DurationVarP(&opt.Interval, "interval", "i", time.Second, `ping interval, must >=10ms,
+interval should also be shorter than statistic window`)
 	flag.DurationVarP(&opt.Timeout, "timeout", "t", time.Second, "ping timeout, must >=10ms")
 	flag.BoolVarP(&opt.Gateway, "gateway", "g", false, "ping gateway")
 	flag.BoolVarP(&opt.Trace, "trace", "T", false, "automatically traceroute the target")
