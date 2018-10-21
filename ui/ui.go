@@ -110,7 +110,7 @@ func (c *Console) renderOneSp(sp *termui.Sparkline, width int, s *statistic.Deta
 		errRateLevel = maxLevel
 	}
 	flag := errRateFlag[errRateLevel]
-	if s.LastAverageCost() < int64(5*time.Millisecond) {
+	if s.LastStatisticLatencyLow() {
 		flag += " ⚡️"
 	}
 

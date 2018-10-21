@@ -10,8 +10,9 @@ import (
 
 // Config of statistic
 type Config struct {
-	ErrorRateThresh []float64 `toml:"error-rate-thresh"`
-	Window          c.Duration
+	ErrorRateThresh  []float64  `toml:"error-rate-thresh"`
+	LowLatencyThresh c.Duration `toml:"low-latency-thresh"`
+	Window           c.Duration
 }
 
 // Validate the statistic config
@@ -43,6 +44,9 @@ func (c *Config) Validate() error {
 func Default() Config {
 	return Config{
 		ErrorRateThresh: []float64{0.01, 0.1, 1},
+		LowLatencyThresh: c.Duration{
+			Value: 5 * time.Millisecond,
+		},
 		Window: c.Duration{
 			Value: 10 * time.Second,
 		},

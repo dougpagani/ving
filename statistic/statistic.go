@@ -110,6 +110,11 @@ func (s *Detail) LastAverageCost() int64 {
 	return s.lastNIterCost / int64(successfulCount)
 }
 
+// LastStatisticLatencyLow represents last average cose is lower than threshold
+func (s *Detail) LastStatisticLatencyLow() bool {
+	return s.LastAverageCost() < int64(statisticConfig.LowLatencyThresh.Value)
+}
+
 // ResizeViewWindow resize view window to size
 func (s *Detail) ResizeViewWindow(size int) {
 	crtSize := len(s.Cost)

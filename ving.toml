@@ -16,6 +16,9 @@
 ### error reate threshold of statistic
 # error-rate-thresh = [0.01, 0.1, 1]
 #
+### low latency threshold
+# low-latency-thresh = "5ms"
+#
 ### window of statistic, represents as time.Duration, like 1s, 1m, etc
 # window = "10s"
 
