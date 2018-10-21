@@ -15,7 +15,7 @@
 
 # [statistic]
 ### error reate threshold of statistic
-# error-rate-thresh = [0.01, 0.1, 1]
+# error-rate-thresh = [0.01, 0.1, 1.0]
 #
 ### low latency threshold
 # low-latency-thresh = "5ms"
