@@ -4,7 +4,7 @@
 
 ![](_assets/screenshot.png)
 
-`ving` is a ping utility with nice output, in Golang(1.11+), enhanced with some useful features,
+`ving` is a ping utility with nice output, in Golang, with some useful and interesting features,
 like trace, ports probe, and more yet to be implemented, 😝.
 
 Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
@@ -19,30 +19,27 @@ Special thanks to the amazing [termui](https://github.com/gizak/termui) library.
 * error rate and latency statistics in sliding window, as emoji;
 * sort by error rate and latency statistic, `--sort`;
 * ping gateway conveniently, `-g`;
+* plenty of configurations to customize;
 * responsive terminal display (based on termui).
 
-## Feature details
 
-| Features | Functionality | Details|
-|----------|---------------|--------|
-| Trace    | Toggle Key    | <kbd>t</kbd> |
-|          | Switch        | <kbd>▲</kbd> / <kbd>k</kbd>, <kbd>▼</kbd> / <kbd>j</kbd> |
-|          |               | <kbd>n</kbd>: manual mode |
-|          |               | <kbd>c</kbd>: continuous mode |
-| Ports    | Toggle Key    | <kbd>p</kbd> |
-|          | Switch        | <kbd>▲</kbd> / <kbd>k</kbd>, <kbd>▼</kbd> / <kbd>j</kbd> |
-|          |               | <kbd>f</kbd>: filter ports list, reached, unreached, or all |
-|          |               | <kbd>v</kbd>: change view mode, name only, port number only, or both |
-|          |               | <kbd>r</kbd>: refresh and probe all ports again |
-| Help     | Toggle Key    | <kbd>h</kbd> |
+# 🙈 Installation
 
+On macOS you can install or upgrade to the latest released version with [Homebrew](https://brew.sh/):
+```
+$ brew tap yittg/iyg
 
-# 🙈 Install
+$ brew install ving
 
+$ brew upgrade ving
+```
+
+Or you cat install via `go get`:
 ```
 $ go get -u github.com/yittg/ving
-
-# install version in development
+```
+And you can install the version in development(requires golang 1.11+):
+```
 $ go get -u github.com/yittg/ving@develop
 ```
 
@@ -62,3 +59,18 @@ $ ving 8.8.8.8 -P 1-1024
 
 $ ving --help
 ```
+
+## Key bindings
+
+| Features | Keys         | Detail |
+|----------|--------------|--------|
+| Trace    | <kbd>t</kbd> | toggle traceroute |
+|          | <kbd>▲</kbd> <kbd>▼</kbd> / <kbd>k</kbd> <kbd>j</kbd> | navigate |
+|          | <kbd>n</kbd> | manual mode, i.e. next |
+|          | <kbd>c</kbd> | continuous mode |
+| Ports    | <kbd>p</kbd> | toggle ports probe |
+|          | <kbd>▲</kbd> <kbd>▼</kbd> / <kbd>k</kbd> <kbd>j</kbd> | navigate |
+|          | <kbd>f</kbd> | filter ports list, reached, unreached, or all |
+|          | <kbd>v</kbd> | change view mode, name only, port number only, or both |
+|          | <kbd>r</kbd> | refresh and probe all ports again |
+| Help     | <kbd>h</kbd> | toggle help panel |
