@@ -2,7 +2,7 @@ package version
 
 import "fmt"
 
-const version = "0.4"
+const version = "0.5"
 
 // PrintVersion prints current version and state
 func PrintVersion() {
