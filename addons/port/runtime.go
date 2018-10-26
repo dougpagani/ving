@@ -48,7 +48,6 @@ func newPortAddOn() addons.AddOn {
 	return &runtime{
 		selected:    make(chan int, 1),
 		resultChan:  make(chan *touchResult, 1024),
-		targetPorts: getPredefinedPorts(),
 		targetDone:  sync.Map{},
 		results:     make(map[int][]touchResultWrapper),
 		refreshChan: make(chan int, 1),
@@ -71,12 +70,12 @@ func (rt *runtime) Init(envoy *addons.Envoy) {
 	}
 
 	if len(rt.opt.MorePorts) > 0 {
-		customPorts := make([]types.PortDesc, 0, len(rt.opt.MorePorts))
 		for _, p := range rt.opt.MorePorts {
-			customPorts = append(customPorts, types.PortDesc{Name: strconv.Itoa(p), Port: p})
+			rt.targetPorts = append(rt.targetPorts, types.PortDesc{Name: strconv.Itoa(p), Port: p})
 		}
-		rt.targetPorts = append(customPorts, rt.targetPorts...)
 		rt.opt.Ports = true
+	} else {
+		rt.targetPorts = getPredefinedPorts()
 	}
 }
 
