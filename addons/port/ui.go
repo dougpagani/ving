@@ -15,6 +15,10 @@ const (
 	portsHeight = 8
 )
 
+var (
+	rotating = []string{"/", "-", "\\", "|"}
+)
+
 type viewEnum int
 
 const (
@@ -190,6 +194,8 @@ func (pu *ui) UpdateState(t time.Time, actives map[int]bool) {
 	text := ""
 	if pu.source.checkDone(selected) {
 		text = "[✔](fg-green)  "
+	} else if !pu.source.checkStart(selected) {
+		text = rotating[(t.UnixNano()/int64(time.Millisecond*100))%4] + "  "
 	}
 
 	if pu.filter == reached {
