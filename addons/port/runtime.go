@@ -22,6 +22,7 @@ type runtime struct {
 	active     bool
 
 	selected    chan int
+	crtSelected int
 	resultChan  chan *touchResult
 	refreshChan chan int
 
@@ -49,7 +50,7 @@ type touchResultWrapper struct {
 }
 
 type prober struct {
-	pipe    chan *probeUnit
+	pipeMap sync.Map
 	running sync.Once
 }
 
@@ -105,23 +106,27 @@ func (rt *runtime) Stop() {
 	close(rt.stop)
 }
 
+func (rt *runtime) currentSelected() int {
+	return rt.crtSelected
+}
+
 func (rt *runtime) scanPorts() {
-	var selected int
 	var host *protocol.NetworkTarget
 	ticker := time.NewTicker(time.Millisecond * 10)
 	for {
 		select {
 		case <-rt.stop:
 			return
-		case selected = <-rt.selected:
-			if selected < 0 || selected >= len(rt.targets) {
+		case rt.crtSelected = <-rt.selected:
+			if rt.crtSelected < 0 || rt.crtSelected >= len(rt.targets) {
 				host = nil
 				continue
 			}
-			host = rt.targets[selected]
+			host = rt.targets[rt.crtSelected]
 		case id := <-rt.refreshChan:
 			rt.selected <- id
 		case <-ticker.C:
+			selected := rt.currentSelected()
 			if !rt.active || host == nil || !rt.checkStart(selected) {
 				break
 			}
@@ -138,23 +143,37 @@ func (rt *runtime) probeTargetAsyc(idx, portID int, t *protocol.NetworkTarget) {
 	bucket := portID % rt.proberPoolSize
 	_p, existed := rt.proberPool.LoadOrStore(bucket, &prober{})
 	p := _p.(*prober)
+
+	chooseOrAllocatePipe := func(pipeMap *sync.Map, idx int) chan *probeUnit {
+		_pipe, ok := pipeMap.Load(idx)
+		if !ok {
+			_pipe = make(chan *probeUnit, 100)
+			pipeMap.Store(idx, _pipe)
+		}
+		return _pipe.(chan *probeUnit)
+	}
+
 	if !existed {
-		p.pipe = make(chan *probeUnit, 100)
 		p.running.Do(func() {
-			go func(pipe chan *probeUnit) {
-				for pu := range pipe {
-					connTime, err := rt.ping.PingOnce(pu.target, time.Second)
-					rt.resultChan <- &touchResult{
-						id:        pu.id,
-						portID:    pu.portID,
-						connected: err == nil,
-						connTime:  connTime,
+			go func(pipeMap *sync.Map) {
+				for {
+					select {
+					case pu := <-chooseOrAllocatePipe(pipeMap, rt.currentSelected()):
+						connTime, err := rt.ping.PingOnce(pu.target, time.Second)
+						rt.resultChan <- &touchResult{
+							id:        pu.id,
+							portID:    pu.portID,
+							connected: err == nil,
+							connTime:  connTime,
+						}
+					default:
+						time.Sleep(time.Millisecond * 10)
 					}
 				}
-			}(p.pipe)
+			}(&p.pipeMap)
 		})
 	}
-	p.pipe <- &probeUnit{
+	chooseOrAllocatePipe(&p.pipeMap, idx) <- &probeUnit{
 		id:     idx,
 		portID: portID,
 		target: t,
