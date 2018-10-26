@@ -1,6 +1,8 @@
 package help
 
 import (
+	"time"
+
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/types"
 )
@@ -53,7 +55,7 @@ func (h *ui) ActivateAfterStart() bool {
 	return false
 }
 
-func (h *ui) UpdateState(map[int]bool) {
+func (h *ui) UpdateState(time.Time, map[int]bool) {
 	state, ok := h.source.State().([]string)
 	if !ok {
 		return

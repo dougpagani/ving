@@ -1,6 +1,8 @@
 package addons
 
 import (
+	"time"
+
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/types"
 )
@@ -32,7 +34,7 @@ type UI interface {
 	ActivateAfterStart() bool
 
 	// UpdateState update state
-	UpdateState(activeTargets map[int]bool)
+	UpdateState(t time.Time, activeTargets map[int]bool)
 }
 
 // ConfirmAware can handle entry event when active

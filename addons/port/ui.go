@@ -3,6 +3,7 @@ package port
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/addons/common"
@@ -173,7 +174,7 @@ func (pu *ui) filtered(res *touchResult) bool {
 }
 
 // UpdateState of this add-on
-func (pu *ui) UpdateState(actives map[int]bool) {
+func (pu *ui) UpdateState(t time.Time, actives map[int]bool) {
 	pu.TargetList.UpdateState(pu.source.rawTargets, actives)
 
 	st, ok := pu.source.State().(map[int][]touchResultWrapper)

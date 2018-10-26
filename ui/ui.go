@@ -201,7 +201,7 @@ func (c *Console) Render(t time.Time, sts []*statistic.Detail) {
 	}
 
 	if c.activeAddOn != nil {
-		c.activeAddOn.UpdateState(activeTargetSet)
+		c.activeAddOn.UpdateState(t, activeTargetSet)
 	}
 	termui.Body.Align()
 	termui.Render(termui.Body)

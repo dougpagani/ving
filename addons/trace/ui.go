@@ -1,6 +1,8 @@
 package trace
 
 import (
+	"time"
+
 	"github.com/gizak/termui"
 	"github.com/yittg/ving/addons/common"
 	"github.com/yittg/ving/types"
@@ -84,7 +86,7 @@ func (tu *ui) Render() *termui.Row {
 }
 
 // UpdateState see `AddOn`
-func (tu *ui) UpdateState(actives map[int]bool) {
+func (tu *ui) UpdateState(t time.Time, actives map[int]bool) {
 	tu.TargetList.UpdateState(tu.source.rawTargets, actives)
 
 	st, ok := tu.source.State().(*St)
