@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-	ports "github.com/yittg/ving/addons/port/types"
+	ports "github.com/yittg/ving/addons/port/config"
 	statistic "github.com/yittg/ving/statistic/config"
 	ui "github.com/yittg/ving/ui/config"
 )
@@ -31,18 +31,25 @@ func GetConfig() *Config {
 	return customConfig
 }
 
-func validate() error {
-	if err := customConfig.UI.Validate(); err != nil {
+func validateAddOnConfig(ac *AddOnConfig) error {
+	return ac.Ports.Validate()
+}
+
+func validate(c *Config) error {
+	if err := c.UI.Validate(); err != nil {
 		return err
 	}
-	if err := customConfig.Statistic.Validate(); err != nil {
+	if err := c.Statistic.Validate(); err != nil {
 		return err
 	}
-	return nil
+	return validateAddOnConfig(&c.AddOns)
 }
 
 func init() {
 	customConfig = &Config{
+		AddOns: AddOnConfig{
+			Ports: ports.Default(),
+		},
 		UI:        ui.Default(),
 		Statistic: statistic.Default(),
 	}
@@ -54,7 +61,7 @@ func init() {
 		if _, err := toml.DecodeFile(rcFile, customConfig); err != nil {
 			panic(err)
 		}
-		if err := validate(); err != nil {
+		if err := validate(customConfig); err != nil {
 			fmt.Printf("Invalid custom configuration file: %s\n%s\n", rcFile, err)
 			os.Exit(1)
 		}

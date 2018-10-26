@@ -7,12 +7,11 @@ import (
 
 	"github.com/yittg/ving/addons"
 	"github.com/yittg/ving/addons/port/types"
+	"github.com/yittg/ving/config"
 	"github.com/yittg/ving/net"
 	"github.com/yittg/ving/net/protocol"
 	"github.com/yittg/ving/options"
 )
-
-const probeConcurrency = 1023
 
 type runtime struct {
 	targets    []*protocol.NetworkTarget
@@ -30,7 +29,8 @@ type runtime struct {
 	targetDone  sync.Map
 	results     map[int][]touchResultWrapper
 
-	proberPool sync.Map
+	proberPool     sync.Map
+	proberPoolSize int
 
 	ui         *ui
 	initUILock sync.Once
@@ -60,14 +60,16 @@ type probeUnit struct {
 }
 
 func newPortAddOn() addons.AddOn {
+	portConfig := config.GetConfig().AddOns.Ports
 	return &runtime{
-		selected:    make(chan int, 1),
-		proberPool:  sync.Map{},
-		resultChan:  make(chan *touchResult, 1024),
-		targetDone:  sync.Map{},
-		results:     make(map[int][]touchResultWrapper),
-		refreshChan: make(chan int, 1),
-		stop:        make(chan bool, 2),
+		selected:       make(chan int, 1),
+		proberPool:     sync.Map{},
+		proberPoolSize: portConfig.ProbeConcurrency,
+		resultChan:     make(chan *touchResult, 1024),
+		targetDone:     sync.Map{},
+		results:        make(map[int][]touchResultWrapper),
+		refreshChan:    make(chan int, 1),
+		stop:           make(chan bool, 2),
 	}
 }
 
@@ -134,7 +136,7 @@ func (rt *runtime) scanPorts() {
 }
 
 func (rt *runtime) probeTargetAsyc(idx, portID int, t *protocol.NetworkTarget) {
-	bucket := portID % probeConcurrency
+	bucket := portID % rt.proberPoolSize
 	_p, existed := rt.proberPool.LoadOrStore(bucket, &prober{})
 	p := _p.(*prober)
 	if !existed {

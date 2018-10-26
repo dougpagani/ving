@@ -27,6 +27,7 @@
 # [add-ons]
 #
 # [add-ons.ports]
+# probe-concurrency = 1023
 # extra = [ {name = "echo", port = 7},
 #           {name = "ftp transfer", port = 20},
 #           {name = "ftp control", port = 21},
