@@ -12,6 +12,8 @@ import (
 	"github.com/yittg/ving/options"
 )
 
+const probeConcurrency = 1023
+
 type runtime struct {
 	targets    []*protocol.NetworkTarget
 	rawTargets []string
@@ -27,6 +29,8 @@ type runtime struct {
 	targetPorts []types.PortDesc
 	targetDone  sync.Map
 	results     map[int][]touchResultWrapper
+
+	proberPool sync.Map
 
 	ui         *ui
 	initUILock sync.Once
@@ -44,9 +48,21 @@ type touchResultWrapper struct {
 	res  *touchResult
 }
 
+type prober struct {
+	pipe    chan *probeUnit
+	running sync.Once
+}
+
+type probeUnit struct {
+	id     int
+	portID int
+	target *protocol.NetworkTarget
+}
+
 func newPortAddOn() addons.AddOn {
 	return &runtime{
 		selected:    make(chan int, 1),
+		proberPool:  sync.Map{},
 		resultChan:  make(chan *touchResult, 1024),
 		targetDone:  sync.Map{},
 		results:     make(map[int][]touchResultWrapper),
@@ -109,23 +125,38 @@ func (rt *runtime) scanPorts() {
 			if !rt.active || host == nil || rt.checkDone(selected) {
 				break
 			}
-			g := sync.WaitGroup{}
 			for i, port := range rt.targetPorts {
-				g.Add(1)
-				go func(idx int, p types.PortDesc) {
-					defer g.Done()
-					connTime, err := rt.ping.PingOnce(protocol.TCPTarget(host, p.Port), time.Second)
+				rt.probeTargetAsyc(selected, i, protocol.TCPTarget(host, port.Port))
+			}
+			host = nil
+		}
+	}
+}
+
+func (rt *runtime) probeTargetAsyc(idx, portID int, t *protocol.NetworkTarget) {
+	bucket := portID % probeConcurrency
+	_p, existed := rt.proberPool.LoadOrStore(bucket, &prober{})
+	p := _p.(*prober)
+	if !existed {
+		p.pipe = make(chan *probeUnit, 100)
+		p.running.Do(func() {
+			go func(pipe chan *probeUnit) {
+				for pu := range pipe {
+					connTime, err := rt.ping.PingOnce(pu.target, time.Second)
 					rt.resultChan <- &touchResult{
-						id:        selected,
-						portID:    idx,
+						id:        pu.id,
+						portID:    pu.portID,
 						connected: err == nil,
 						connTime:  connTime,
 					}
-				}(i, port)
-			}
-			g.Wait()
-			host = nil
-		}
+				}
+			}(p.pipe)
+		})
+	}
+	p.pipe <- &probeUnit{
+		id:     idx,
+		portID: portID,
+		target: t,
 	}
 }
 
