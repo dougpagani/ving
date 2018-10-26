@@ -29,6 +29,7 @@ const (
 	all filterEnum = iota
 	reached
 	unReached
+	unChecked
 	end
 )
 
@@ -164,6 +165,8 @@ func (pu *ui) filtered(res *touchResult) bool {
 		return res != nil && res.connected
 	case unReached:
 		return res != nil && !res.connected
+	case unChecked:
+		return res == nil
 	default:
 		return true
 	}
@@ -192,6 +195,8 @@ func (pu *ui) UpdateState(actives map[int]bool) {
 		text += "[Reached](fg-green) "
 	} else if pu.filter == unReached {
 		text += "[unReached](fg-red) "
+	} else if pu.filter == unChecked {
+		text += "[unChecked](fg-grey) "
 	}
 
 	matched := false
@@ -212,6 +217,9 @@ func (pu *ui) UpdateState(actives map[int]bool) {
 			text += "[•](fg-red)"
 		}
 		text += " " + pu.buildPortView(trw.port)
+		if len(text) > 4096 {
+			break
+		}
 	}
 	if !matched {
 		text += "none ports"
