@@ -121,12 +121,11 @@ func (rt *runtime) scanPorts() {
 			host = rt.targets[selected]
 		case id := <-rt.refreshChan:
 			rt.selected <- id
-			rt.targetDone.Store(id, false)
-			rt.results[id] = rt.prepareTouchResults()
 		case <-ticker.C:
-			if !rt.active || host == nil || rt.checkDone(selected) {
+			if !rt.active || host == nil || !rt.checkStart(selected) {
 				break
 			}
+			rt.targetDone.Store(selected, false)
 			for i, port := range rt.targetPorts {
 				rt.probeTargetAsyc(selected, i, protocol.TCPTarget(host, port.Port))
 			}
@@ -162,7 +161,13 @@ func (rt *runtime) probeTargetAsyc(idx, portID int, t *protocol.NetworkTarget) {
 	}
 }
 
-func (rt *runtime) resetTargetIter(id int) {
+func (rt *runtime) resetTargetStatus(id int) {
+	if !rt.checkDone(id) {
+		return
+	}
+
+	rt.results[id] = rt.prepareTouchResults()
+	rt.targetDone.Delete(id)
 	rt.refreshChan <- id
 }
 
@@ -220,6 +225,11 @@ func (rt *runtime) GetUI() addons.UI {
 		})
 	}
 	return rt.ui
+}
+
+func (rt *runtime) checkStart(idx int) bool {
+	_, ok := rt.targetDone.Load(idx)
+	return !ok
 }
 
 func (rt *runtime) checkDone(idx int) bool {

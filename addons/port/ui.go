@@ -132,7 +132,7 @@ func (pu *ui) handleV() {
 }
 
 func (pu *ui) handleR() {
-	pu.source.resetTargetIter(pu.TargetList.CurrentSelected())
+	pu.source.resetTargetStatus(pu.TargetList.CurrentSelected())
 }
 
 // ActivateAfterStart see `addons.ActivateAfterStart`
