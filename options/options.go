@@ -79,7 +79,7 @@ func (o *Option) portsValid() bool {
 			o.MorePorts = append(o.MorePorts, port...)
 		}
 	}
-	return len(o.MorePorts) <= 1024
+	return true
 }
 
 func (o *Option) isValid() bool {
@@ -91,14 +91,13 @@ func (o *Option) isValid() bool {
 // ParseCommandLine results options and targets
 func ParseCommandLine(opt *Option) []string {
 	flag.Usage = printUsage
-	flag.DurationVarP(&opt.Interval, "interval", "i", time.Second, `ping interval, must >=10ms,
-interval should also be shorter than statistic window`)
+	flag.DurationVarP(&opt.Interval, "interval", "i", time.Second, `ping interval, should be shorter than statistic window, must >=10ms`)
 	flag.DurationVarP(&opt.Timeout, "timeout", "t", time.Second, "ping timeout, must >=10ms")
 	flag.BoolVarP(&opt.Gateway, "gateway", "g", false, "ping gateway")
 	flag.BoolVarP(&opt.Trace, "trace", "T", false, "automatically traceroute the target")
 	flag.BoolVarP(&opt.Ports, "ports", "", false, "automatically probe the target ports")
 	flag.StringArrayVarP(&opt.MorePortsStr, "more-ports", "P", []string{},
-		"ports to probe, e.g. -P 8080 -P 8082-8092, no more than #1024 ports")
+		"ports to probe, e.g. -P 8080 -P 8082-8092")
 	flag.BoolVarP(&opt.Sort, "sort", "", false, "sort by statistic")
 	flag.BoolVarP(&opt.ShowVersion, "version", "v", false, "display the version")
 	flag.Parse()
