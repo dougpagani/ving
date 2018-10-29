@@ -163,18 +163,18 @@ func (pu *ui) buildPortView(p types.PortDesc) string {
 	}
 }
 
-func (pu *ui) filtered(res *touchResult) bool {
+func (pu *ui) getPredicat() func(*touchResult) bool {
 	switch pu.filter {
 	case all:
-		return true
+		return func(*touchResult) bool { return true }
 	case reached:
-		return res != nil && res.connected
+		return func(res *touchResult) bool { return res != nil && res.connected }
 	case unReached:
-		return res != nil && !res.connected
+		return func(res *touchResult) bool { return res != nil && !res.connected }
 	case unChecked:
-		return res == nil
+		return func(res *touchResult) bool { return res == nil }
 	default:
-		return true
+		return func(*touchResult) bool { return true }
 	}
 }
 
@@ -192,10 +192,11 @@ func (pu *ui) UpdateState(t time.Time, actives map[int]bool) {
 		pu.par.Text = "<enter> to start/continue"
 		return
 	}
+	predicate := pu.getPredicat()
 	matched := 0
 	portsView := ""
 	for _, trw := range thisSt {
-		if !pu.filtered(trw.res) {
+		if !predicate(trw.res) {
 			continue
 		}
 		matched++
