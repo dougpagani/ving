@@ -1,6 +1,7 @@
 package port
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -191,45 +192,45 @@ func (pu *ui) UpdateState(t time.Time, actives map[int]bool) {
 		pu.par.Text = "<enter> to start/continue"
 		return
 	}
-	text := ""
-	if pu.source.checkDone(selected) {
-		text = "[✔](fg-green)  "
-	} else if !pu.source.checkStart(selected) {
-		text = rotating[(t.UnixNano()/int64(time.Millisecond*100))%4] + "  "
-	}
-
-	if pu.filter == reached {
-		text += "[Reached](fg-green) "
-	} else if pu.filter == unReached {
-		text += "[unReached](fg-red) "
-	} else if pu.filter == unChecked {
-		text += "[unChecked](fg-grey) "
-	}
-
-	matched := false
+	matched := 0
+	portsView := ""
 	for _, trw := range thisSt {
 		if !pu.filtered(trw.res) {
 			continue
 		}
-		if matched {
-			text += " | "
-		} else {
-			matched = true
+		matched++
+		if matched > 127 {
+			if matched == 128 {
+				portsView += "..."
+			}
+			continue
+		}
+		if matched > 1 {
+			portsView += " | "
 		}
 		if trw.res == nil {
-			text += "[•](fg-grey)"
+			portsView += "[•](fg-grey)"
 		} else if trw.res.connected {
-			text += "[•](fg-green)"
+			portsView += "[•](fg-green)"
 		} else {
-			text += "[•](fg-red)"
+			portsView += "[•](fg-red)"
 		}
-		text += " " + pu.buildPortView(trw.port)
-		if len(text) > 4096 {
-			break
-		}
+		portsView += " " + pu.buildPortView(trw.port)
 	}
-	if !matched {
-		text += "none ports"
+	summary := ""
+	if pu.source.checkDone(selected) {
+		summary = "[✔](fg-green)  "
+	} else if !pu.source.checkStart(selected) {
+		summary = rotating[(t.UnixNano()/int64(time.Millisecond*100))%4] + "  "
 	}
-	pu.par.Text = text
+	if pu.filter == reached {
+		summary += "[Reached #%d](fg-green) "
+	} else if pu.filter == unReached {
+		summary += "[unReached #%d](fg-red) "
+	} else if pu.filter == unChecked {
+		summary += "[unChecked #%d](fg-grey) "
+	} else {
+		summary += "Total #%d "
+	}
+	pu.par.Text = fmt.Sprintf(summary, matched) + portsView
 }
