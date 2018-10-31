@@ -131,7 +131,7 @@ func (rt *runtime) scanPorts() {
 			rt.selected <- id
 		case <-ticker.C:
 			selected := rt.currentSelected()
-			if !rt.active || host == nil || !rt.checkStart(selected) {
+			if !rt.active || host == nil || !rt.checkNotBegin(selected) {
 				break
 			}
 			rt.targetDone.Store(selected, 0)
@@ -250,7 +250,7 @@ func (rt *runtime) GetUI() addons.UI {
 	return rt.ui
 }
 
-func (rt *runtime) checkStart(idx int) bool {
+func (rt *runtime) checkNotBegin(idx int) bool {
 	_, ok := rt.targetDone.Load(idx)
 	return !ok
 }

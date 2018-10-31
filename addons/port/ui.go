@@ -221,7 +221,7 @@ func (pu *ui) UpdateState(t time.Time, actives map[int]bool) {
 	summary := ""
 	if pu.source.checkDone(selected) {
 		summary = "[✔](fg-green)  "
-	} else if !pu.source.checkStart(selected) {
+	} else if !pu.source.checkNotBegin(selected) {
 		summary = rotating[(t.UnixNano()/int64(time.Millisecond*100))%4] + "  "
 	}
 	if pu.filter == reached {
