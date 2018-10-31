@@ -3,6 +3,7 @@ package port
 import (
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/yittg/ving/addons"
@@ -32,6 +33,7 @@ type runtime struct {
 
 	proberPool     sync.Map
 	proberPoolSize int
+	scheduling     *int32
 
 	ui         *ui
 	initUILock sync.Once
@@ -88,6 +90,8 @@ func (rt *runtime) Init(envoy *addons.Envoy) {
 		rt.rawTargets = append(rt.rawTargets, t.Raw)
 	}
 
+	scheduling := int32(0)
+	rt.scheduling = &scheduling
 	if len(rt.opt.MorePorts) > 0 {
 		for _, p := range rt.opt.MorePorts {
 			rt.targetPorts = append(rt.targetPorts, types.PortDesc{Name: strconv.Itoa(p), Port: p})
@@ -130,7 +134,7 @@ func (rt *runtime) scanPorts() {
 			if !rt.active || host == nil || !rt.checkStart(selected) {
 				break
 			}
-			rt.targetDone.Store(selected, false)
+			rt.targetDone.Store(selected, 0)
 			for i, port := range rt.targetPorts {
 				rt.probeTargetAsyc(selected, i, protocol.TCPTarget(host, port.Port))
 			}
@@ -200,8 +204,7 @@ func (rt *runtime) prepareTouchResults() []touchResultWrapper {
 	return s
 }
 
-func (rt *runtime) Schedule() {
-	updated := make(map[int]bool)
+func (rt *runtime) doSchedule() {
 	for {
 		select {
 		case res := <-rt.resultChan:
@@ -211,21 +214,22 @@ func (rt *runtime) Schedule() {
 				rt.results[res.id] = s
 			}
 			s[res.portID].res = res
-			updated[res.id] = true
-		default:
-			for id := range updated {
-				done := true
-				for _, s := range rt.results[id] {
-					if s.res == nil {
-						done = false
-						break
-					}
-				}
-				rt.targetDone.Store(id, done)
+			v, loaded := rt.targetDone.LoadOrStore(res.id, 1)
+			if loaded {
+				rt.targetDone.Store(res.id, v.(int)+1)
 			}
+		default:
 			return
 		}
 	}
+}
+
+func (rt *runtime) Schedule() {
+	if atomic.SwapInt32(rt.scheduling, 1) > 0 {
+		return
+	}
+	defer atomic.StoreInt32(rt.scheduling, 0)
+	rt.doSchedule()
 }
 
 func (rt *runtime) updateStatus(active bool) {
@@ -253,5 +257,5 @@ func (rt *runtime) checkStart(idx int) bool {
 
 func (rt *runtime) checkDone(idx int) bool {
 	done, ok := rt.targetDone.Load(idx)
-	return ok && done.(bool)
+	return ok && done.(int) == len(rt.targetPorts)
 }
