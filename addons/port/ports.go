@@ -1,7 +1,11 @@
 package port
 
 import (
+	"sort"
+	"strconv"
+
 	"github.com/yittg/ving/addons/port/types"
+	"github.com/yittg/ving/config"
 )
 
 var wellKnownPorts = []types.PortDesc{
@@ -35,7 +39,34 @@ func (s sortable) Swap(i, j int) {
 }
 
 var predefinedPorts sortable
+var predefinedPortsMap map[int]types.PortDesc
+
+func buildPredefinedPorts() {
+	predefinedPorts = append(wellKnownPorts, config.GetConfig().AddOns.Ports.Extra...)
+	sort.Sort(predefinedPorts)
+
+	predefinedPortsMap = make(map[int]types.PortDesc, len(predefinedPorts))
+	for _, pd := range predefinedPorts {
+		predefinedPortsMap[pd.Port] = pd
+	}
+}
 
 func getPredefinedPorts() []types.PortDesc {
 	return predefinedPorts
+}
+
+func getPredefinedPortByN(port int) *types.PortDesc {
+	pd, ok := predefinedPortsMap[port]
+	if !ok {
+		return nil
+	}
+	return &pd
+}
+
+func getNameOfPort(port int) string {
+	pd := getPredefinedPortByN(port)
+	if pd == nil {
+		return strconv.Itoa(port)
+	}
+	return pd.Name
 }

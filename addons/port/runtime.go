@@ -1,7 +1,6 @@
 package port
 
 import (
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -94,7 +93,7 @@ func (rt *runtime) Init(envoy *addons.Envoy) {
 	rt.scheduling = &scheduling
 	if len(rt.opt.MorePorts) > 0 {
 		for _, p := range rt.opt.MorePorts {
-			rt.targetPorts = append(rt.targetPorts, types.PortDesc{Name: strconv.Itoa(p), Port: p})
+			rt.targetPorts = append(rt.targetPorts, types.PortDesc{Name: getNameOfPort(p), Port: p})
 		}
 		rt.opt.Ports = true
 	} else {
