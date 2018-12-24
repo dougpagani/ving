@@ -1,6 +1,7 @@
 package icmp
 
 import (
+	"context"
 	"math/rand"
 	"net"
 	"sync"
@@ -18,9 +19,6 @@ type IPing struct {
 	connV6 *connSource
 
 	sessions sync.Map
-
-	stopping chan bool
-	stop     sync.WaitGroup
 }
 
 var protoMap = map[int]protoDesc{
@@ -58,9 +56,8 @@ type session struct {
 }
 
 // NewPing new a ping
-func NewPing(stopChan chan bool) *IPing {
+func NewPing() *IPing {
 	return &IPing{
-		stopping: stopChan,
 		sessions: sync.Map{},
 	}
 }
@@ -92,7 +89,7 @@ func (p *IPing) newIPv6Conn() (*connSource, error) {
 }
 
 // Start listen
-func (p *IPing) Start() (err error) {
+func (p *IPing) Start(ctx context.Context) (err error) {
 	p.conn, err = p.newIPv4Conn()
 	if err != nil {
 		return
@@ -102,43 +99,42 @@ func (p *IPing) Start() (err error) {
 		return
 	}
 
-	p.stop.Add(4)
-	go p.consumeBus(p.conn)
-	go p.readFrom(p.conn)
-	go p.consumeBus(p.connV6)
-	go p.readFrom(p.connV6)
-	go p.wait()
+	go p.startConn(ctx, p.conn)
+	go p.startConn(ctx, p.connV6)
 	return nil
 }
 
-func (p *IPing) wait() {
-	p.stop.Wait()
-
-	p.conn.close()
-	p.connV6.close()
+func (p *IPing) startConn(ctx context.Context, c *connSource) {
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		p.consumeBus(ctx, c)
+		defer wg.Done()
+	}()
+	go func() {
+		p.readFrom(ctx, c)
+		defer wg.Done()
+	}()
+	go func() {
+		wg.Wait()
+		c.close()
+	}()
 }
 
-func (p *IPing) readFrom(c *connSource) {
+func (p *IPing) readFrom(ctx context.Context, c *connSource) {
 	for {
 		select {
-		case <-p.stopping:
-			p.stop.Done()
+		case <-ctx.Done():
 			return
 		default:
 			bytes := make([]byte, 512)
 			if err := c.c.SetReadDeadline(time.Now().Add(time.Millisecond * 100)); err != nil {
-				close(p.stopping)
-				return
+				continue
 			}
 			n, addr, err := c.c.ReadFrom(bytes)
 			if err != nil {
-				if netOpErr, ok := err.(*net.OpError); ok {
-					if netOpErr.Timeout() {
-						continue
-					} else {
-						close(p.stopping)
-						return
-					}
+				if _, ok := err.(*net.OpError); ok {
+					continue
 				}
 			}
 			c.bus <- &packet{
@@ -151,11 +147,10 @@ func (p *IPing) readFrom(c *connSource) {
 	}
 }
 
-func (p *IPing) consumeBus(c *connSource) {
+func (p *IPing) consumeBus(ctx context.Context, c *connSource) {
 	for {
 		select {
-		case <-p.stopping:
-			p.stop.Done()
+		case <-ctx.Done():
 			return
 		case msg := <-c.bus:
 			p.parseMsg(msg)
@@ -279,7 +274,7 @@ func (p *IPing) Trace(ipAddr *net.IPAddr, ttl int, timeout time.Duration) (time.
 }
 
 func (c *connSource) close() {
-	c.c.Close()
+	_ = c.c.Close()
 }
 
 func init() {

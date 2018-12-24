@@ -10,7 +10,7 @@ type TPing struct {
 }
 
 // NewPing for tcp
-func NewPing(stop chan bool) *TPing {
+func NewPing() *TPing {
 	return &TPing{}
 }
 

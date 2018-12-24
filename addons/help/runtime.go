@@ -1,6 +1,7 @@
 package help
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -27,10 +28,7 @@ func (h *runtime) Desc() string {
 func (h *runtime) Init(*addons.Envoy) {
 }
 
-func (h *runtime) Start() {
-}
-
-func (h *runtime) Stop() {
+func (h *runtime) Start(context.Context) {
 }
 
 func (h *runtime) Schedule() {

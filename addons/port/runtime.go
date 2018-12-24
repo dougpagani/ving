@@ -1,6 +1,7 @@
 package port
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,7 +17,6 @@ import (
 type runtime struct {
 	targets    []*protocol.NetworkTarget
 	rawTargets []string
-	stop       chan bool
 	ping       *net.NPing
 	opt        *options.Option
 	active     bool
@@ -71,7 +71,6 @@ func newPortAddOn() addons.AddOn {
 		targetDone:     sync.Map{},
 		results:        make(map[int][]touchResultWrapper),
 		refreshChan:    make(chan int, 1),
-		stop:           make(chan bool, 2),
 	}
 }
 
@@ -101,24 +100,20 @@ func (rt *runtime) Init(envoy *addons.Envoy) {
 	}
 }
 
-func (rt *runtime) Start() {
-	go rt.scanPorts()
-}
-
-func (rt *runtime) Stop() {
-	close(rt.stop)
+func (rt *runtime) Start(ctx context.Context) {
+	go rt.scanPorts(ctx)
 }
 
 func (rt *runtime) currentSelected() int {
 	return rt.crtSelected
 }
 
-func (rt *runtime) scanPorts() {
+func (rt *runtime) scanPorts(ctx context.Context) {
 	var host *protocol.NetworkTarget
 	ticker := time.NewTicker(time.Millisecond * 10)
 	for {
 		select {
-		case <-rt.stop:
+		case <-ctx.Done():
 			return
 		case rt.crtSelected = <-rt.selected:
 			if rt.crtSelected < 0 || rt.crtSelected >= len(rt.targets) {

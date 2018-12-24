@@ -1,6 +1,7 @@
 package net
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"time"
@@ -17,16 +18,16 @@ type NPing struct {
 }
 
 // NewPing new a ping
-func NewPing(stopChan chan bool) *NPing {
+func NewPing() *NPing {
 	return &NPing{
-		icmpPing: icmp.NewPing(stopChan),
-		tcpPing:  tcp.NewPing(stopChan),
+		icmpPing: icmp.NewPing(),
+		tcpPing:  tcp.NewPing(),
 	}
 }
 
 // Start listen
-func (p *NPing) Start() (err error) {
-	return p.icmpPing.Start()
+func (p *NPing) Start(ctx context.Context) (err error) {
+	return p.icmpPing.Start(ctx)
 }
 
 // PingOnce to target with address as `addr`

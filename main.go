@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"os"
 
 	"github.com/spf13/pflag"
+	"github.com/yittg/ving/common"
 	_ "github.com/yittg/ving/config"
 	"github.com/yittg/ving/core"
 	"github.com/yittg/ving/options"
@@ -21,9 +22,9 @@ func main() {
 
 	engine, err := core.NewEngine(&opt, targets)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
 		pflag.Usage()
-		os.Exit(1)
+		common.ErrExit("", err, 1)
 	}
-	engine.Run()
+	ctx := context.Background()
+	engine.Run(ctx)
 }

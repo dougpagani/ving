@@ -1,6 +1,7 @@
 package trace
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 type runtime struct {
 	targets    []*protocol.NetworkTarget
 	rawTargets []string
-	stop       chan bool
 	ping       *net.NPing
 	opt        *options.Option
 	active     bool
@@ -35,7 +35,6 @@ func NewTrace() addons.AddOn {
 		traceSelected: make(chan int, 1),
 		traceManually: make(chan bool, 1),
 		traceRecords:  make(chan types.Record, 10),
-		stop:          make(chan bool, 2),
 	}
 }
 
@@ -69,15 +68,11 @@ func (tr *runtime) GetUI() addons.UI {
 	return tr.ui
 }
 
-func (tr *runtime) Start() {
-	go tr.traceTarget()
+func (tr *runtime) Start(ctx context.Context) {
+	go tr.traceTarget(ctx)
 }
 
-func (tr *runtime) Stop() {
-	close(tr.stop)
-}
-
-func (tr *runtime) traceTarget() {
+func (tr *runtime) traceTarget(ctx context.Context) {
 	ticker := time.NewTicker(time.Millisecond * 500)
 	var header *types.RecordHeader
 	ttl := 1
@@ -85,7 +80,7 @@ func (tr *runtime) traceTarget() {
 	manually := false
 	for {
 		select {
-		case <-tr.stop:
+		case <-ctx.Done():
 			return
 		case selected := <-tr.traceSelected:
 			header = &types.RecordHeader{

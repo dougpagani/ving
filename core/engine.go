@@ -1,12 +1,12 @@
 package core
 
 import (
-	"fmt"
-	"os"
+	"context"
 	"sort"
 	"time"
 
 	"github.com/yittg/ving/addons"
+	"github.com/yittg/ving/common"
 	"github.com/yittg/ving/errors"
 	"github.com/yittg/ving/net"
 	"github.com/yittg/ving/net/protocol"
@@ -35,8 +35,6 @@ type Engine struct {
 	console *ui.Console
 
 	addOns []addons.AddOn
-
-	stop chan bool
 }
 
 // NewEngine new a engine instance
@@ -53,9 +51,8 @@ func NewEngine(opt *options.Option, targets []string) (*Engine, error) {
 	}
 	nTargets := len(networkTargets)
 
-	stop := make(chan bool, 2)
 	records := make(chan types.Record, nTargets)
-	nPing := net.NewPing(stop)
+	nPing := net.NewPing()
 
 	addOns := addons.All
 	var addOnUIs []addons.UI
@@ -78,34 +75,30 @@ func NewEngine(opt *options.Option, targets []string) (*Engine, error) {
 
 		addOns:  addOns,
 		console: ui.NewConsole(addOnUIs),
-
-		stop: stop,
 	}, nil
 }
 
 // Run the engine
-func (e *Engine) Run() {
-	if err := e.ping.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "start ping error, %v\n", err)
-		os.Exit(2)
+func (e *Engine) Run(ctx context.Context) {
+	c, cancel := context.WithCancel(ctx)
+	if err := e.ping.Start(ctx); err != nil {
+		common.ErrExit("start ping error", err, 2)
 	}
-
 	for idx, target := range e.targets {
 		header := types.RecordHeader{
 			ID:     idx,
 			Target: target,
 		}
-		go e.pingTarget(header)
+		go e.pingTarget(c, header)
 	}
-	go e.loop()
+	go e.loop(c)
 	for _, addOn := range e.addOns {
-		addOn.Start()
-		defer addOn.Stop()
+		addOn.Start(c)
 	}
-	e.console.Run(e.stop)
+	e.console.Run(cancel)
 }
 
-func (e *Engine) pingTarget(header types.RecordHeader) {
+func (e *Engine) pingTarget(ctx context.Context, header types.RecordHeader) {
 	if header.Target.Typ == protocol.Unknown {
 		e.records <- types.Record{
 			RecordHeader: header,
@@ -147,7 +140,7 @@ func (e *Engine) pingTarget(header types.RecordHeader) {
 
 	for {
 		select {
-		case <-e.stop:
+		case <-ctx.Done():
 			return
 		case <-t.C:
 			if f() {
@@ -188,30 +181,35 @@ func (e *Engine) sortedStatistic() {
 	})
 }
 
-func (e *Engine) loop() {
+func (e *Engine) loop(ctx context.Context) {
 	ticker := time.NewTicker(defaultLoopPeriodic)
 	lastSort := time.Now()
-	for t := range ticker.C {
-		func() {
-			e.retireRecords(t)
-			for _, addOn := range e.addOns {
-				addOn.Schedule()
-			}
-			for {
-				select {
-				case res := <-e.records:
-					st := e.getStatistic(res.RecordHeader)
-					st.DealRecord(t, res)
-				default:
-					if e.opt.Sort && lastSort.Add(5*time.Second).Before(t) {
-						e.sortedStatistic()
-						lastSort = t
-					}
-
-					e.console.Render(t, e.stSlice)
-					return
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case tk := <-ticker.C:
+			func(t time.Time) {
+				e.retireRecords(t)
+				for _, addOn := range e.addOns {
+					addOn.Schedule()
 				}
-			}
-		}()
+				for {
+					select {
+					case res := <-e.records:
+						st := e.getStatistic(res.RecordHeader)
+						st.DealRecord(t, res)
+					default:
+						if e.opt.Sort && lastSort.Add(5 * time.Second).Before(t) {
+							e.sortedStatistic()
+							lastSort = t
+						}
+						e.console.Render(t, e.stSlice)
+						return
+					}
+				}
+			}(tk)
+		}
+
 	}
 }

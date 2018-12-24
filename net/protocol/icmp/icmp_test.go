@@ -1,6 +1,7 @@
 package icmp
 
 import (
+	"context"
 	"log"
 	"net"
 	"time"
@@ -9,9 +10,8 @@ import (
 )
 
 func ExampleIPing_Trace() {
-	stop := make(chan bool, 2)
-	ping := NewPing(stop)
-	if err := ping.Start(); err != nil {
+	ping := NewPing()
+	if err := ping.Start(context.Background()); err != nil {
 		log.Fatalf("start ping error, %s", err)
 	}
 

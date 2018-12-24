@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"time"
@@ -292,7 +293,7 @@ func (c *Console) registerAddOnEvents(systemKeys []string) {
 	}
 }
 
-func (c *Console) prepareGlobalKeys(stopChan chan bool) (systemKeys []string) {
+func (c *Console) prepareGlobalKeys(cancelFunc context.CancelFunc) (systemKeys []string) {
 	quitKey := types.EventMeta{
 		Keys:        []string{"q", "<C-c>"},
 		Description: "quit",
@@ -300,7 +301,7 @@ func (c *Console) prepareGlobalKeys(stopChan chan bool) (systemKeys []string) {
 	systemKeys = append(systemKeys, quitKey.Keys...)
 	GlobalKeys = append(GlobalKeys, quitKey)
 	termui.Handle(quitKey.Keys, func(termui.Event) {
-		close(stopChan)
+		cancelFunc()
 		termui.StopLoop()
 	})
 
@@ -318,7 +319,7 @@ func (c *Console) prepareGlobalKeys(stopChan chan bool) (systemKeys []string) {
 }
 
 // Run a spark line ui
-func (c *Console) Run(stopChan chan bool) {
+func (c *Console) Run(cancelFunc context.CancelFunc) {
 	if err := termui.Init(); err != nil {
 		panic(err)
 	}
@@ -328,7 +329,7 @@ func (c *Console) Run(stopChan chan bool) {
 		termui.NewRow(),
 	)
 	termui.Body.Align()
-	systemKeys := c.prepareGlobalKeys(stopChan)
+	systemKeys := c.prepareGlobalKeys(cancelFunc)
 	termui.Handle("<Resize>", func(termui.Event) {
 		termui.Body.Width = termui.TermWidth()
 		termui.Body.Align()

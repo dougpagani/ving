@@ -1,5 +1,7 @@
 package addons
 
+import "context"
+
 // AddOn extend this utility with some useful features
 // all add-ons should implements this interface
 type AddOn interface {
@@ -7,9 +9,7 @@ type AddOn interface {
 
 	Init(*Envoy)
 
-	Start()
-
-	Stop()
+	Start(context.Context)
 
 	Schedule()
 
